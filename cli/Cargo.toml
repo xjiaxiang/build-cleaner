@@ -1,0 +1,19 @@
+[package]
+name = "build-cleaner-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "CLI tool for build-cleaner"
+
+[[bin]]
+name = "bc"
+path = "src/main.rs"
+
+[dependencies]
+build-cleaner-core = { path = "../core" }
+clap = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+

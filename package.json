@@ -1,0 +1,32 @@
+{
+	"name": "build-cleaner",
+	"version": "0.1.0",
+	"description": "批量快速清理项目临时目录和文件的命令行工具",
+	"private": true,
+	"workspaces": [
+		"npm",
+		"raycast"
+	],
+	"scripts": {
+		"build:rust": "cargo build",
+		"build:rust-release": "cargo build --release",
+		"test:rust": "cargo test",
+		"build:npm": "cd npm && pnpm build",
+		"build:raycast": "cd raycast && pnpm build",
+		"build:all": "pnpm run build:rust && pnpm run build:npm && pnpm run build:raycast",
+		"install": "pnpm install",
+		"clean": "cargo clean && rm -rf npm/dist npm/node_modules raycast/dist raycast/node_modules"
+	},
+	"keywords": [
+		"build-cleaner",
+		"clean",
+		"cleanup",
+		"cli"
+	],
+	"author": "xjiaxiang",
+	"license": "MIT",
+	"engines": {
+		"node": ">=18.0.0",
+		"pnpm": ">=8.0.0"
+	}
+}

@@ -1,0 +1,24 @@
+{
+	"name": "build-cleaner-raycast",
+	"version": "0.1.0",
+	"description": "Raycast extension for build-cleaner",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"dev": "ray dev"
+	},
+	"keywords": [
+		"raycast",
+		"build-cleaner"
+	],
+	"author": "xjiaxiang",
+	"license": "MIT",
+	"devDependencies": {
+		"@raycast/api": "^1.0.0",
+		"@types/node": "^20.0.0",
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"build-cleaner": "workspace:*"
+	}
+}
