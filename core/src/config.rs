@@ -279,10 +279,8 @@ impl ConfigLoader {
                 if !merged.clean.folders.contains(&folder) {
                     merged.clean.folders.push(folder);
                 }
-            } else {
-                if !merged.clean.files.contains(pattern) {
-                    merged.clean.files.push(pattern.clone());
-                }
+            } else if !merged.clean.files.contains(pattern) {
+                merged.clean.files.push(pattern.clone());
             }
         }
 

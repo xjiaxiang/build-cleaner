@@ -148,7 +148,7 @@ impl SearchEngine {
 
                     if !Self::check_size(size, search_options.min_size, search_options.max_size) {
                         // 每扫描 1000 个文件输出一次进度
-                        if total_files_scanned % 1000 == 0 {
+                        if total_files_scanned.is_multiple_of(1000) {
                             if let Some(ref mut cb) = progress_callback {
                                 cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
                             }
@@ -162,7 +162,7 @@ impl SearchEngine {
                         search_options.max_age_days,
                     ) {
                         // 每扫描 1000 个文件输出一次进度
-                        if total_files_scanned % 1000 == 0 {
+                        if total_files_scanned.is_multiple_of(1000) {
                             if let Some(ref mut cb) = progress_callback {
                                 cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
                             }
@@ -184,7 +184,7 @@ impl SearchEngine {
                     }
                     
                     // 每扫描 1000 个文件输出一次进度
-                    if total_files_scanned % 1000 == 0 {
+                    if total_files_scanned.is_multiple_of(1000) {
                         if let Some(ref mut cb) = progress_callback {
                             cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
                         }
@@ -208,7 +208,7 @@ impl SearchEngine {
                     }
                     
                     // 每扫描 100 个目录输出一次进度，或者每当匹配到目录时也输出
-                    if total_dirs_scanned % 100 == 0 || folders.len() > 0 && folders.len() % 10 == 0 {
+                    if total_dirs_scanned.is_multiple_of(100) || !folders.is_empty() && folders.len().is_multiple_of(10) {
                         if let Some(ref mut cb) = progress_callback {
                             cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
                         }
@@ -349,7 +349,7 @@ impl SearchEngine {
     ///
     /// # 返回
     /// 如果路径在排除列表中或其子路径，返回 `true`
-    pub fn should_exclude(path: &PathBuf, excludes: &[PathBuf]) -> bool {
+    pub fn should_exclude(path: &Path, excludes: &[PathBuf]) -> bool {
         for exclude in excludes {
             if path.starts_with(exclude) {
                 return true;

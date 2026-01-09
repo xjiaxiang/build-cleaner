@@ -21,6 +21,7 @@ pub fn print_error(error: &str) {
 ///
 /// # 参数
 /// * `message` - 信息内容
+#[allow(dead_code)]
 pub fn print_info(message: &str) {
     println!("{}", message);
 }

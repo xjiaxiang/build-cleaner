@@ -104,13 +104,11 @@ impl CommandExecutor {
             return Ok(());
         }
 
-        if args.interactive {
-            if !crate::interactive::confirm_deletion(&search_result)? {
-                if !args.quiet {
-                    println!("Operation cancelled.");
-                }
-                return Ok(());
+        if args.interactive && !crate::interactive::confirm_deletion(&search_result)? {
+            if !args.quiet {
+                println!("Operation cancelled.");
             }
+            return Ok(());
         }
 
         // 显示清理开始信息
@@ -132,13 +130,11 @@ impl CommandExecutor {
         }
 
         // 如果有失败的项目，显示警告
-        if stats.files_failed > 0 || stats.dirs_failed > 0 {
-            if !args.quiet {
-                crate::output::print_warning(&format!(
-                    "Some items failed to delete: {} files, {} directories",
-                    stats.files_failed, stats.dirs_failed
-                ));
-            }
+        if (stats.files_failed > 0 || stats.dirs_failed > 0) && !args.quiet {
+            crate::output::print_warning(&format!(
+                "Some items failed to delete: {} files, {} directories",
+                stats.files_failed, stats.dirs_failed
+            ));
         }
 
         Ok(())

@@ -3,6 +3,9 @@ use crate::search::SearchResult;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// 进度回调函数类型
+type ProgressCallback = Box<dyn FnMut(usize, usize, &Path)>;
+
 /// 删除操作的结果
 #[derive(Debug)]
 pub struct DeleteResult {
@@ -170,7 +173,7 @@ impl DeleteEngine {
     pub fn execute_deletion_with_progress(
         plan: &DeletePlan,
         dry_run: bool,
-        _progress_callback: Option<Box<dyn FnMut(usize, usize, &Path)>>,
+        _progress_callback: Option<ProgressCallback>,
     ) -> DeleteResult {
         let mut deleted_files = Vec::new();
         let mut deleted_dirs = Vec::new();
