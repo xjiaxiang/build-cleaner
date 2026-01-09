@@ -49,9 +49,36 @@ cargo test
 pnpm install
 
 # 构建 npm 包
-cd npm && pnpm build
+pnpm run build:npm
 
 # 构建 Raycast 插件
-cd raycast && pnpm build
+pnpm run build:raycast
+
+# 构建所有项目（Rust + Node.js）
+pnpm run build:all
+```
+
+## Workspace 包
+
+项目使用 pnpm workspace 管理多个包：
+
+- **根目录** (`build-cleaner`): 主项目配置
+- **npm** (`@build-cleaner/node`): Node.js API 包
+- **raycast** (`build-cleaner-raycast`): Raycast 扩展，依赖 `@build-cleaner/node`
+
+## 使用 npm 包
+
+```typescript
+import { clean } from '@build-cleaner/node';
+
+const result = await clean({
+  paths: ['.'],
+  patterns: ['node_modules/', 'dist/'],
+  dryRun: true,
+  verbose: true,
+});
+
+console.log(`Deleted ${result.dirsDeleted} directories`);
+console.log(`Freed ${result.spaceFreed} bytes`);
 ```
 

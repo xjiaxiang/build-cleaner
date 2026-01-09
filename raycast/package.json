@@ -1,24 +1,49 @@
 {
-	"name": "build-cleaner-raycast",
-	"version": "0.1.0",
-	"description": "Raycast extension for build-cleaner",
-	"main": "dist/index.js",
-	"scripts": {
-		"build": "tsc",
-		"dev": "ray dev"
-	},
+	"$schema": "https://www.raycast.com/schemas/extension.json",
+	"name": "build-cleaner",
+	"title": "build-cleaner",
+	"description": "cleaner for build system",
+	"icon": "extension-icon.png",
+	"author": "xiang",
+	"platforms": [
+		"macOS",
+		"Windows"
+	],
+	"categories": [
+		"Developer Tools"
+	],
+	"license": "MIT",
+	"commands": [
+		{
+			"name": "index",
+			"title": "Build Cleaner",
+			"description": "快速清理项目临时文件和目录",
+			"mode": "view"
+		}
+	],
 	"keywords": [
 		"raycast",
 		"build-cleaner"
 	],
-	"author": "xjiaxiang",
-	"license": "MIT",
 	"devDependencies": {
-		"@raycast/api": "^1.0.0",
-		"@types/node": "^20.0.0",
-		"typescript": "^5.0.0"
+		"@raycast/eslint-config": "^2.0.4",
+		"@types/node": "22.13.10",
+		"@types/react": "19.0.10",
+		"eslint": "^9.22.0",
+		"prettier": "^3.5.3",
+		"typescript": "^5.8.2"
 	},
 	"dependencies": {
-		"build-cleaner": "workspace:*"
+		"@raycast/api": "^1.103.4",
+		"@raycast/utils": "^1.17.0",
+		"@build-cleaner/node": "workspace:*"
+	},
+	"scripts": {
+		"build": "ray build",
+		"dev": "ray develop",
+		"fix-lint": "ray lint --fix",
+		"lint": "ray lint",
+		"prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+		"publish": "pnpx @raycast/api@latest publish"
 	}
 }
