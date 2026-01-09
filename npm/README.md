@@ -181,11 +181,6 @@ interface CleanResult {
    * 失败的文件列表（仅在 verbose 模式下）
    */
   failedFiles?: Array<{path: string; error: string}>;
-  
-  /**
-   * 原始输出（仅在 verbose 模式下）
-   */
-  rawOutput?: string;
 }
 ```
 
@@ -308,7 +303,7 @@ async function cleanWithConfig() {
 ### 示例 6：错误处理
 
 ```typescript
-import { clean, ErrorHandler } from '@build-cleaner/node';
+import { clean } from '@build-cleaner/node';
 
 async function cleanWithErrorHandling() {
   try {
@@ -318,9 +313,16 @@ async function cleanWithErrorHandling() {
     
     if (result.filesFailed > 0 || result.dirsFailed > 0) {
       console.warn(`警告：有 ${result.filesFailed} 个文件和 ${result.dirsFailed} 个目录删除失败`);
+      
+      // 在详细模式下，可以查看失败详情
+      if (result.failedDirs) {
+        result.failedDirs.forEach(({path, error}) => {
+          console.error(`  ${path}: ${error}`);
+        });
+      }
     }
   } catch (error) {
-    console.error('清理失败：', error.message);
+    console.error('清理失败：', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
@@ -389,6 +391,60 @@ const result = await clean({
 - **Go**：`vendor`, `bin`
 - **Java**：`target`, `build`
 
+## CLI 工具
+
+除了编程 API，`@build-cleaner/node` 还提供了一个命令行工具 `build-cleaner-node`。
+
+### 安装后使用
+
+```bash
+# 全局安装后直接使用
+npx @build-cleaner/node .
+
+# 或本地安装后使用
+pnpm add @build-cleaner/node
+npx build-cleaner-node .
+```
+
+### CLI 选项
+
+```bash
+Usage: build-cleaner-node [OPTIONS] <PATHS...>
+
+批量快速清理项目临时目录和文件的命令行工具
+
+Arguments:
+  <PATHS...>              要搜索的路径列表（必需，至少一个）
+
+Options:
+  --clean <PATTERN>       清理模式列表（文件夹以 / 结尾，文件使用通配符）
+                         可以多次使用，例如：--clean node_modules/ --clean dist/
+  --config <FILE>         配置文件路径（可选，支持 YAML 和 JSON 格式）
+  --dry-run               预览模式（不实际删除，仅显示将要删除的内容）
+  -i, --interactive       交互式确认（删除前询问用户确认）
+  -v, --verbose           详细输出（显示详细的清理报告）
+  -q, --quiet             静默模式（最小输出，仅显示错误）
+  --debug                 调试模式（显示调试日志）
+  -h, --help              显示帮助信息
+  -V, --version           显示版本信息
+
+Examples:
+  # 清理当前目录
+  build-cleaner-node .
+
+  # 预览模式
+  build-cleaner-node --dry-run ~/projects
+
+  # 指定清理模式
+  build-cleaner-node --clean node_modules/ --clean dist/ .
+
+  # 使用配置文件
+  build-cleaner-node --config .bc.yaml ~/projects
+
+  # 详细输出
+  build-cleaner-node --verbose ~/projects
+```
+
 ## 高级用法
 
 ### 导出内部模块
@@ -396,15 +452,33 @@ const result = await clean({
 ```typescript
 import {
   ConfigLoader,
+  Config,
   SearchEngine,
+  SearchResult,
   DeleteEngine,
+  DeletePlan,
+  DeleteResult,
 } from '@build-cleaner/node';
 
 // 加载配置
 const config = ConfigLoader.loadConfig('.', null, ['node_modules/']);
 
-// 搜索文件
-const searchResult = SearchEngine.search(['.'], config);
+// 搜索文件（带进度回调）
+const progressCallback = (
+  filesScanned: number,
+  dirsScanned: number,
+  filesMatched: number,
+  dirsMatched: number,
+  totalSize: number
+) => {
+  console.log(`扫描进度: ${filesScanned} 文件, ${dirsMatched} 匹配`);
+};
+
+const searchResult = SearchEngine.searchWithProgress(
+  ['.'],
+  config,
+  progressCallback
+);
 
 // 创建删除计划
 const deletePlan = DeleteEngine.createDeletePlan(searchResult);
@@ -421,13 +495,25 @@ const deleteResult = DeleteEngine.executeDeletion(deletePlan, true);
    ```
    Error: Path does not exist: /path/to/dir
    ```
-   解决：检查路径是否正确
+   解决：检查路径是否正确，确保路径存在
+
+2. **至少需要一个路径**
+   ```
+   Error: At least one path is required
+   ```
+   解决：确保在 `paths` 数组中至少提供一个路径
 
 3. **权限不足**
    ```
    Error: Permission denied
    ```
-   解决：确保有足够的权限访问和删除文件
+   解决：确保有足够的权限访问和删除文件/目录
+
+4. **配置文件格式错误**
+   ```
+   Error: Invalid config file format
+   ```
+   解决：检查配置文件是否为有效的 YAML 或 JSON 格式
 
 ### 错误处理示例
 
@@ -438,23 +524,38 @@ async function safeClean() {
   try {
     const result = await clean({
       paths: ['.'],
+      verbose: true, // 启用详细模式以获取失败详情
     });
     
     // 检查是否有失败的项目
     if (result.filesFailed > 0 || result.dirsFailed > 0) {
       console.warn('部分文件删除失败');
-      if (result.failedDirs) {
+      
+      if (result.failedDirs && result.failedDirs.length > 0) {
+        console.error('\n失败的目录：');
         result.failedDirs.forEach(({path, error}) => {
+          console.error(`  ${path}: ${error}`);
+        });
+      }
+      
+      if (result.failedFiles && result.failedFiles.length > 0) {
+        console.error('\n失败的文件：');
+        result.failedFiles.forEach(({path, error}) => {
           console.error(`  ${path}: ${error}`);
         });
       }
     }
   } catch (error) {
-    if (error.message.includes('ENOENT')) {
-      console.error('清理失败');
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    if (errorMessage.includes('ENOENT') || errorMessage.includes('does not exist')) {
+      console.error('错误：指定的路径不存在');
+    } else if (errorMessage.includes('At least one path is required')) {
+      console.error('错误：至少需要指定一个路径');
     } else {
-      console.error('清理失败：', error.message);
+      console.error('清理失败：', errorMessage);
     }
+    
     throw error;
   }
 }
@@ -465,11 +566,36 @@ async function safeClean() {
 1. **纯 Node.js 实现**：
    - 无需安装 Rust 或任何二进制文件
    - 直接使用 Node.js 标准库实现
-2. **平台支持**：支持所有 Node.js 支持的平台（macOS、Linux、Windows）
-3. **交互式模式**：在 Node.js 环境中，交互式模式可能不适用，建议使用 `dryRun` 进行预览
-4. **路径格式**：路径支持 `~` 展开（如 `~/projects`）
-5. **性能**：对于大量文件，建议使用 `quiet` 模式以减少输出开销
-6. **错误恢复**：即使部分文件删除失败，函数仍会返回结果，需要检查 `filesFailed` 和 `dirsFailed`
+   - 使用 `walkdir` 等高效库进行文件系统遍历
+
+2. **平台支持**：
+   - 支持所有 Node.js 支持的平台（macOS、Linux、Windows）
+   - 路径格式支持 `~` 展开（如 `~/projects`）
+
+3. **交互式模式**：
+   - 在 CLI 工具中，交互式模式会提示用户确认
+   - 在编程 API 中，交互式模式需要手动实现确认逻辑
+   - 建议使用 `dryRun` 进行预览后再执行删除
+
+4. **进度显示**：
+   - 默认情况下会显示实时扫描进度
+   - 进度信息输出到 stderr，不会影响 stdout 的结果
+   - 使用 `quiet: true` 可以禁用进度显示
+
+5. **性能优化**：
+   - 对于大量文件，建议使用 `quiet` 模式以减少输出开销
+   - 扫描过程使用异步遍历，不会阻塞事件循环
+   - 支持多路径并行处理
+
+6. **错误处理**：
+   - 即使部分文件删除失败，函数仍会返回结果
+   - 需要检查 `filesFailed` 和 `dirsFailed` 字段
+   - 在 `verbose` 模式下可以查看详细的失败信息
+
+7. **路径处理**：
+   - 支持相对路径和绝对路径
+   - 支持 `~` 展开为用户主目录
+   - 自动验证路径是否存在
 
 ## 类型定义
 
@@ -480,7 +606,35 @@ import type {
   CleanOptions,
   CleanResult,
   ErrorInfo,
+  Config,
+  SearchResult,
+  DeletePlan,
+  DeleteResult,
 } from '@build-cleaner/node';
+```
+
+## 进度显示
+
+在非静默模式下，`clean` 函数会自动显示扫描进度。进度信息会实时更新到标准错误输出（stderr），包括：
+
+- 已扫描的文件数量
+- 已扫描的目录数量
+- 匹配的文件数量
+- 匹配的目录数量
+- 匹配文件的总大小
+
+```typescript
+// 默认会显示进度（quiet: false）
+const result = await clean({
+  paths: ['.'],
+  // quiet: false, // 默认值
+});
+
+// 静默模式不显示进度
+const result = await clean({
+  paths: ['.'],
+  quiet: true,
+});
 ```
 
 ## 开发
