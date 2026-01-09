@@ -1,23 +1,41 @@
 {
-	"name": "build-cleaner",
+	"name": "@build-cleaner/node",
 	"version": "0.1.0",
-	"description": "Node.js API for build-cleaner",
+	"description": "Node.js API for build-cleaner - A fast tool to clean temporary files and directories in various project types",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"build": "tsc",
+		"prepublishOnly": "pnpm build",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [
 		"build-cleaner",
 		"clean",
-		"cleanup"
+		"cleanup",
+		"node_modules",
+		"build",
+		"dist",
+		"temporary",
+		"files"
 	],
 	"author": "xjiaxiang",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/xjiaxiang/build-cleaner.git",
+		"directory": "npm"
+	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
+		"@types/node": "^22.0.0",
 		"typescript": "^5.0.0"
 	},
-	"dependencies": {}
+	"dependencies": {},
+	"engines": {
+		"node": ">=22.0.0"
+	}
 }
