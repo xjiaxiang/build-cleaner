@@ -43,7 +43,7 @@ pub struct SearchOptions {
 pub struct SearchEngine;
 
 impl SearchEngine {
-    /// 在指定路径中搜索匹配的文件和文件夹
+    /// 在指定路径中搜索匹配的文件和文件夹（不带进度回调）
     ///
     /// # 参数
     /// * `paths` - 要搜索的路径列表（应该已经展开和验证）
@@ -51,10 +51,61 @@ impl SearchEngine {
     ///
     /// # 返回
     /// 搜索结果，包含匹配的文件夹、文件和总大小
+    pub fn search(paths: &[PathBuf], config: &Config) -> Result<SearchResult, CleanError> {
+        Self::search_with_progress(paths, config, None::<fn(usize, usize, usize, usize, u64)>)
+    }
+
+    /// 递归计算目录的总大小
+    /// 
+    /// 注意：文件系统不直接存储目录大小，必须遍历所有文件才能计算。
+    /// 这里使用 walkdir 库来优化遍历性能。
+    ///
+    /// # 参数
+    /// * `dir_path` - 目录路径
+    ///
+    /// # 返回
+    /// 目录及其所有内容的总大小（字节）
+    fn calculate_dir_size(dir_path: &Path) -> u64 {
+        let mut total_size = 0u64;
+        
+        // 使用 walkdir 遍历目录，比 read_dir 更高效
+        for entry in WalkDir::new(dir_path).into_iter() {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue, // 忽略无法访问的条目
+            };
+
+            // 只统计文件大小，目录本身不占用空间（除了元数据）
+            if entry.file_type().is_file() {
+                if let Ok(metadata) = entry.metadata() {
+                    total_size += metadata.len();
+                }
+            }
+        }
+
+        total_size
+    }
+
+    /// 在指定路径中搜索匹配的文件和文件夹（带进度回调）
+    ///
+    /// # 参数
+    /// * `paths` - 要搜索的路径列表（应该已经展开和验证）
+    /// * `config` - 清理配置，包含匹配模式和过滤选项
+    /// * `progress_callback` - 可选的进度回调函数，接收 (files_scanned, dirs_scanned, files_matched, dirs_matched, total_size)
+    ///
+    /// # 返回
+    /// 搜索结果，包含匹配的文件夹、文件和总大小
     ///
     /// # 注意
-    /// 当文件夹匹配成功后，将不再继续遍历该文件夹的子文件夹
-    pub fn search(paths: &[PathBuf], config: &Config) -> Result<SearchResult, CleanError> {
+    /// 当文件夹匹配成功后，将不再继续遍历该文件夹的子文件夹，但会立即计算该目录的大小
+    pub fn search_with_progress<F>(
+        paths: &[PathBuf],
+        config: &Config,
+        mut progress_callback: Option<F>,
+    ) -> Result<SearchResult, CleanError>
+    where
+        F: FnMut(usize, usize, usize, usize, u64),
+    {
         let mut folders = Vec::new();
         let mut files = Vec::new();
         let mut total_size = 0u64;
@@ -74,7 +125,13 @@ impl SearchEngine {
                 let matched = matched_folders_clone.lock().unwrap();
                 !Self::is_in_matched_folder(entry_path, &matched)
             }) {
-                let entry_path = entry?;
+                let entry_path = match entry {
+                    Ok(path) => path,
+                    Err(_) => {
+                        // 忽略遍历错误（如权限问题、符号链接循环等），继续处理其他文件
+                        continue;
+                    }
+                };
 
                 if Self::should_exclude(&entry_path, config_exclude) {
                     continue;
@@ -90,6 +147,12 @@ impl SearchEngine {
                     let size = metadata.len();
 
                     if !Self::check_size(size, search_options.min_size, search_options.max_size) {
+                        // 每扫描 1000 个文件输出一次进度
+                        if total_files_scanned % 1000 == 0 {
+                            if let Some(ref mut cb) = progress_callback {
+                                cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                            }
+                        }
                         continue;
                     }
 
@@ -98,6 +161,12 @@ impl SearchEngine {
                         search_options.min_age_days,
                         search_options.max_age_days,
                     ) {
+                        // 每扫描 1000 个文件输出一次进度
+                        if total_files_scanned % 1000 == 0 {
+                            if let Some(ref mut cb) = progress_callback {
+                                cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                            }
+                        }
                         continue;
                     }
 
@@ -113,6 +182,13 @@ impl SearchEngine {
                             break;
                         }
                     }
+                    
+                    // 每扫描 1000 个文件输出一次进度
+                    if total_files_scanned % 1000 == 0 {
+                        if let Some(ref mut cb) = progress_callback {
+                            cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                        }
+                    }
                 } else if metadata.is_dir() {
                     total_dirs_scanned += 1;
                     let name = entry_path
@@ -125,7 +201,16 @@ impl SearchEngine {
                             // 记录匹配的文件夹，后续跳过其子文件夹
                             matched_folders.lock().unwrap().insert(entry_path.clone());
                             folders.push(entry_path.clone());
+                            // 立即计算目录大小，避免扫描完成后的额外等待
+                            total_size += Self::calculate_dir_size(&entry_path);
                             break;
+                        }
+                    }
+                    
+                    // 每扫描 100 个目录输出一次进度，或者每当匹配到目录时也输出
+                    if total_dirs_scanned % 100 == 0 || folders.len() > 0 && folders.len() % 10 == 0 {
+                        if let Some(ref mut cb) = progress_callback {
+                            cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
                         }
                     }
                 }

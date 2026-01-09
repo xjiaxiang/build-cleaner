@@ -31,6 +31,38 @@ pub struct DeletePlan {
 pub struct DeleteEngine;
 
 impl DeleteEngine {
+    /// 递归计算目录的总大小
+    /// 
+    /// 注意：文件系统不直接存储目录大小，必须遍历所有文件才能计算。
+    /// 这里使用 walkdir 库来优化遍历性能。
+    ///
+    /// # 参数
+    /// * `dir_path` - 目录路径
+    ///
+    /// # 返回
+    /// 目录及其所有内容的总大小（字节）
+    fn calculate_dir_size(dir_path: &Path) -> u64 {
+        use walkdir::WalkDir;
+        let mut total_size = 0u64;
+        
+        // 使用 walkdir 遍历目录，比 read_dir 更高效
+        for entry in WalkDir::new(dir_path).into_iter() {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue, // 忽略无法访问的条目
+            };
+
+            // 只统计文件大小，目录本身不占用空间（除了元数据）
+            if entry.file_type().is_file() {
+                if let Ok(metadata) = entry.metadata() {
+                    total_size += metadata.len();
+                }
+            }
+        }
+
+        total_size
+    }
+
     /// 根据搜索结果创建删除计划，目录按深度从深到浅排序
     ///
     /// # 参数
@@ -90,15 +122,56 @@ impl DeleteEngine {
         Ok(())
     }
 
-    /// 执行删除操作
+    /// 根据搜索结果执行删除（dry-run 模式）
+    /// 这个方法可以直接使用 SearchResult 中的 total_size，避免重复计算
+    ///
+    /// # 参数
+    /// * `search_result` - 搜索结果（包含已计算的总大小）
+    /// * `dry_run` - 是否为预览模式
+    ///
+    /// # 返回
+    /// 删除结果，包含成功和失败的统计信息
+    pub fn execute_deletion_from_search(
+        search_result: &SearchResult,
+        dry_run: bool,
+    ) -> DeleteResult {
+        let plan = Self::create_delete_plan(search_result);
+        
+        if dry_run {
+            // 直接使用 SearchResult 中已经计算好的总大小
+            // 文件大小和目录大小都在搜索阶段计算过了
+            return DeleteResult {
+                deleted_files: plan.files.clone(),
+                deleted_dirs: plan.dirs.clone(),
+                failed_files: Vec::new(),
+                failed_dirs: Vec::new(),
+                total_size: search_result.total_size,
+            };
+        }
+        
+        // 实际删除模式
+        Self::execute_deletion(&plan, false)
+    }
+
+    /// 执行删除操作（不带进度回调）
+    pub fn execute_deletion(plan: &DeletePlan, dry_run: bool) -> DeleteResult {
+        Self::execute_deletion_with_progress(plan, dry_run, None::<Box<dyn FnMut(usize, usize, &Path)>>)
+    }
+
+    /// 执行删除操作（带进度回调）
     ///
     /// # 参数
     /// * `plan` - 删除计划
     /// * `dry_run` - 是否为预览模式（不实际删除）
+    /// * `progress_callback` - 可选的进度回调函数，接收 (current, total, current_path)
     ///
     /// # 返回
     /// 删除结果，包含成功和失败的统计信息
-    pub fn execute_deletion(plan: &DeletePlan, dry_run: bool) -> DeleteResult {
+    pub fn execute_deletion_with_progress(
+        plan: &DeletePlan,
+        dry_run: bool,
+        _progress_callback: Option<Box<dyn FnMut(usize, usize, &Path)>>,
+    ) -> DeleteResult {
         let mut deleted_files = Vec::new();
         let mut deleted_dirs = Vec::new();
         let mut failed_files = Vec::new();
@@ -106,13 +179,32 @@ impl DeleteEngine {
         let mut total_size = 0u64;
 
         if dry_run {
+            // 在 dry-run 模式下，文件大小和目录大小都已经在搜索阶段计算过了
+            // 这里只需要收集结果，total_size 会从 SearchResult 传入
+            // 注意：由于接口限制，我们需要重新计算，但可以通过传入 SearchResult 来优化
+            // 目前为了保持接口一致性，我们仍然需要计算
+            // 但实际上，如果 SearchResult.total_size 已经包含了目录大小，这里就不需要重新计算了
+            
+            // 收集文件
             for file in &plan.files {
                 if let Ok(metadata) = fs::metadata(file) {
                     total_size += metadata.len();
                 }
                 deleted_files.push(file.clone());
             }
-            deleted_dirs = plan.dirs.clone();
+            
+            // 收集目录（大小已经在搜索阶段计算并加到 SearchResult.total_size 中了）
+            // 但这里我们无法访问 SearchResult，所以需要重新计算
+            // 为了优化，我们应该修改接口，让 execute_deletion 接收 SearchResult
+            // 或者修改 DeletePlan 包含总大小信息
+            
+            // 临时方案：重新计算目录大小（但这样会有重复计算）
+            // 更好的方案是修改接口，传入 SearchResult 或 total_size
+            for dir in &plan.dirs {
+                total_size += Self::calculate_dir_size(dir);
+                deleted_dirs.push(dir.clone());
+            }
+            
             return DeleteResult {
                 deleted_files,
                 deleted_dirs,
@@ -147,9 +239,13 @@ impl DeleteEngine {
         for dir in &plan.dirs {
             match Self::check_safety(dir) {
                 Ok(_) => {
+                    // 在删除前计算目录大小
+                    let dir_size = Self::calculate_dir_size(dir);
+                    
                     // 使用 remove_dir_all 删除目录及其所有内容
                     match fs::remove_dir_all(dir) {
                         Ok(_) => {
+                            total_size += dir_size;
                             deleted_dirs.push(dir.clone());
                         }
                         Err(e) => {
@@ -247,6 +343,13 @@ mod tests {
 
         let test_dir = temp_dir.path().join("test_dir");
         fs::create_dir(&test_dir).unwrap();
+        
+        // 在目录中创建一个文件，用于测试目录大小计算
+        let test_file_in_dir = test_dir.join("file_in_dir.txt");
+        fs::File::create(&test_file_in_dir)
+            .unwrap()
+            .write_all(b"content in dir")
+            .unwrap();
 
         let plan = DeletePlan {
             files: vec![test_file.clone()],
@@ -264,6 +367,12 @@ mod tests {
         // 验证文件实际未被删除
         assert!(test_file.exists());
         assert!(test_dir.exists());
+        
+        // 验证在 dry-run 模式下，total_size 包含了文件和目录的大小
+        // test_file 大小: 12 字节 ("test content")
+        // test_file_in_dir 大小: 14 字节 ("content in dir")
+        // 总共应该至少是 12 + 14 = 26 字节（可能还有目录元数据）
+        assert!(result.total_size >= 26, "Expected total_size >= 26, got {}", result.total_size);
     }
 
     #[test]

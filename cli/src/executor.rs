@@ -42,18 +42,59 @@ impl CommandExecutor {
             &args.clean_patterns,
         )?;
 
-        // 显示扫描开始信息
-        if args.verbose && !args.quiet {
+        // 显示扫描开始信息（即使非 verbose 模式也显示，避免用户以为程序卡住）
+        if !args.quiet {
             crate::output::print_scanning_start(args.dry_run);
         }
 
-        let search_result = SearchEngine::search(&expanded_paths, &config)?;
+        // 格式化大小的辅助函数
+        fn format_size(bytes: u64) -> String {
+            const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
+            let mut size = bytes as f64;
+            let mut unit_idx = 0;
+
+            while size >= 1024.0 && unit_idx < UNITS.len() - 1 {
+                size /= 1024.0;
+                unit_idx += 1;
+            }
+
+            format!("{:.2} {}", size, UNITS[unit_idx])
+        }
+
+        // 设置进度回调
+        let progress_callback = if !args.quiet {
+            Some(
+                |files_scanned: usize,
+                 dirs_scanned: usize,
+                 files_matched: usize,
+                 dirs_matched: usize,
+                 total_size: u64| {
+                    // 格式化大小
+                    let size_str = format_size(total_size);
+                    eprint!(
+                        "\r📊 Scanning... Files: {}, Dirs: {}, Matched: {} files, {} dirs, Size: {}",
+                        files_scanned, dirs_scanned, files_matched, dirs_matched, size_str
+                    );
+                    use std::io::Write;
+                    let _ = std::io::stderr().flush();
+                },
+            )
+        } else {
+            None
+        };
+
+        let search_result =
+            SearchEngine::search_with_progress(&expanded_paths, &config, progress_callback)?;
+
+        // 清除进度行并换行
+        if !args.quiet {
+            eprintln!("\r✅ Scanning completed");
+        }
 
         if args.dry_run {
-            let delete_result = DeleteEngine::execute_deletion(
-                &DeleteEngine::create_delete_plan(&search_result),
-                true,
-            );
+            // 在 dry-run 模式下，文件大小和目录大小都已经在搜索阶段计算完成了
+            // 直接使用 SearchResult 中的 total_size，避免重复计算
+            let delete_result = DeleteEngine::execute_deletion_from_search(&search_result, true);
             let stats = ReportGenerator::collect_stats(&search_result, &delete_result, start_time);
             let report = ReportGenerator::format_report(&stats, &delete_result, args.verbose);
             println!("{}", report);

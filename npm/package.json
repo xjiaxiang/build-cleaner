@@ -4,12 +4,15 @@
 	"description": "Node.js API for build-cleaner - A fast tool to clean temporary files and directories in various project types",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"bin": {
+		"build-cleaner-node": "./dist/cli.js"
+	},
 	"files": [
 		"dist",
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc",
+		"build": "tsc && chmod +x dist/cli.js",
 		"prepublishOnly": "pnpm build",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},

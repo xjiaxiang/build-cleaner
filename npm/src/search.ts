@@ -23,9 +23,32 @@ export interface SearchResult {
  */
 export class SearchEngine {
 	/**
-	 * 在指定路径中搜索匹配的文件和文件夹
+	 * 在指定路径中搜索匹配的文件和文件夹（不带进度回调）
 	 */
 	static search(paths: string[], config: Config): SearchResult {
+		return this.searchWithProgress(paths, config, null);
+	}
+
+	/**
+	 * 在指定路径中搜索匹配的文件和文件夹（带进度回调）
+	 *
+	 * @param paths 要搜索的路径列表
+	 * @param config 清理配置
+	 * @param progressCallback 可选的进度回调函数，接收 (filesScanned, dirsScanned, filesMatched, dirsMatched, totalSize)
+	 */
+	static searchWithProgress(
+		paths: string[],
+		config: Config,
+		progressCallback:
+			| ((
+					filesScanned: number,
+					dirsScanned: number,
+					filesMatched: number,
+					dirsMatched: number,
+					totalSize: number
+			  ) => void)
+			| null
+	): SearchResult {
 		const folders: string[] = [];
 		const files: string[] = [];
 		let totalSize = 0;
@@ -40,6 +63,7 @@ export class SearchEngine {
 			totalDirsScanned: {value: totalDirsScanned},
 			totalFilesScanned: {value: totalFilesScanned},
 			matchedFolders,
+			progressCallback,
 		};
 
 		for (const searchPath of paths) {
@@ -50,6 +74,17 @@ export class SearchEngine {
 		totalSize = state.totalSize.value;
 		totalDirsScanned = state.totalDirsScanned.value;
 		totalFilesScanned = state.totalFilesScanned.value;
+
+		// 最后一次进度更新，确保显示最终结果
+		if (state.progressCallback) {
+			state.progressCallback(
+				totalFilesScanned,
+				totalDirsScanned,
+				files.length,
+				folders.length,
+				totalSize
+			);
+		}
 
 		return {
 			folders,
@@ -73,6 +108,15 @@ export class SearchEngine {
 			totalDirsScanned: {value: number};
 			totalFilesScanned: {value: number};
 			matchedFolders: Set<string>;
+			progressCallback:
+				| ((
+						filesScanned: number,
+						dirsScanned: number,
+						filesMatched: number,
+						dirsMatched: number,
+						totalSize: number
+				  ) => void)
+				| null;
 		}
 	): void {
 		// 检查是否应该排除
@@ -105,7 +149,21 @@ export class SearchEngine {
 						if (this.matchPattern(folderPattern, entry.name)) {
 							state.matchedFolders.add(fullPath);
 							state.folders.push(fullPath);
+							// 立即计算目录大小，避免扫描完成后的额外等待
+							const dirSize = this.calculateDirSize(fullPath);
+							state.totalSize.value += dirSize;
 							folderMatched = true;
+
+							// 匹配到目录时立即更新进度（不等待每100个目录）
+							if (state.progressCallback) {
+								state.progressCallback(
+									state.totalFilesScanned.value,
+									state.totalDirsScanned.value,
+									state.files.length,
+									state.folders.length,
+									state.totalSize.value
+								);
+							}
 							break;
 						}
 					}
@@ -113,6 +171,20 @@ export class SearchEngine {
 					// 如果文件夹匹配，不再遍历其子目录
 					if (!folderMatched && config.options.recursive !== false) {
 						this.walkPath(fullPath, config, state);
+					}
+
+					// 每扫描 100 个目录输出一次进度
+					if (
+						state.progressCallback &&
+						state.totalDirsScanned.value % 100 === 0
+					) {
+						state.progressCallback(
+							state.totalFilesScanned.value,
+							state.totalDirsScanned.value,
+							state.files.length,
+							state.folders.length,
+							state.totalSize.value
+						);
 					}
 				} else if (entry.isFile()) {
 					state.totalFilesScanned.value++;
@@ -242,6 +314,37 @@ export class SearchEngine {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * 递归计算目录的总大小
+	 *
+	 * 注意：文件系统不直接存储目录大小，必须遍历所有文件才能计算。
+	 *
+	 * @param dirPath 目录路径
+	 * @returns 目录及其所有内容的总大小（字节）
+	 */
+	private static calculateDirSize(dirPath: string): number {
+		let totalSize = 0;
+		try {
+			const entries = fs.readdirSync(dirPath, {withFileTypes: true});
+			for (const entry of entries) {
+				const fullPath = path.join(dirPath, entry.name);
+				try {
+					if (entry.isDirectory()) {
+						totalSize += this.calculateDirSize(fullPath);
+					} else if (entry.isFile()) {
+						const stats = fs.statSync(fullPath);
+						totalSize += stats.size;
+					}
+				} catch {
+					// 忽略无法访问的文件或目录
+				}
+			}
+		} catch {
+			// 忽略无法访问的目录
+		}
+		return totalSize;
 	}
 
 	/**

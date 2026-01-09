@@ -49,8 +49,51 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 		options.patterns || []
 	);
 
-	// 搜索匹配的文件和文件夹
-	const searchResult = SearchEngine.search(expandedPaths, config);
+	// 搜索匹配的文件和文件夹（带进度回调）
+	const progressCallback = options.quiet
+		? null
+		: (
+				filesScanned: number,
+				dirsScanned: number,
+				filesMatched: number,
+				dirsMatched: number,
+				totalSize: number
+		  ) => {
+				// 格式化大小
+				const formatSize = (bytes: number): string => {
+					const UNITS = ["B", "KB", "MB", "GB", "TB"];
+					let size = bytes;
+					let unitIdx = 0;
+					while (size >= 1024 && unitIdx < UNITS.length - 1) {
+						size /= 1024;
+						unitIdx++;
+					}
+					return `${size.toFixed(2)} ${UNITS[unitIdx]}`;
+				};
+
+				// 使用同步写入并立即刷新，避免输出延迟
+				process.stderr.write(
+					`\r📊 Scanning... Files: ${filesScanned}, Dirs: ${dirsScanned}, Matched: ${filesMatched} files, ${dirsMatched} dirs, Size: ${formatSize(
+						totalSize
+					)}`
+				);
+		  };
+
+	const searchResult = SearchEngine.searchWithProgress(
+		expandedPaths,
+		config,
+		progressCallback
+	);
+
+	// 清除进度行并刷新
+	if (!options.quiet) {
+		// 先清除当前行，然后输出完成信息
+		process.stderr.write("\r✅ Scanning completed\n");
+		// 确保输出立即刷新（使用同步方式）
+		if (process.stderr.isTTY) {
+			process.stderr.write("");
+		}
+	}
 
 	// 创建删除计划
 	const deletePlan = DeleteEngine.createDeletePlan(searchResult);

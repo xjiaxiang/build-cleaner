@@ -41,6 +41,8 @@ mod tests {
             folders: vec![PathBuf::from("/test/dir1")],
             files: vec![PathBuf::from("/test/file1.txt")],
             total_size: 1024,
+            total_dirs_scanned: 1,
+            total_files_scanned: 1,
         };
 
         // 这个测试主要验证函数不会 panic
