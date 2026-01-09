@@ -56,7 +56,7 @@ impl SearchEngine {
     }
 
     /// 递归计算目录的总大小
-    /// 
+    ///
     /// 注意：文件系统不直接存储目录大小，必须遍历所有文件才能计算。
     /// 这里使用 walkdir 库来优化遍历性能。
     ///
@@ -67,7 +67,7 @@ impl SearchEngine {
     /// 目录及其所有内容的总大小（字节）
     fn calculate_dir_size(dir_path: &Path) -> u64 {
         let mut total_size = 0u64;
-        
+
         // 使用 walkdir 遍历目录，比 read_dir 更高效
         for entry in WalkDir::new(dir_path).into_iter() {
             let entry = match entry {
@@ -150,7 +150,13 @@ impl SearchEngine {
                         // 每扫描 1000 个文件输出一次进度
                         if total_files_scanned.is_multiple_of(1000) {
                             if let Some(ref mut cb) = progress_callback {
-                                cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                                cb(
+                                    total_files_scanned,
+                                    total_dirs_scanned,
+                                    files.len(),
+                                    folders.len(),
+                                    total_size,
+                                );
                             }
                         }
                         continue;
@@ -164,7 +170,13 @@ impl SearchEngine {
                         // 每扫描 1000 个文件输出一次进度
                         if total_files_scanned.is_multiple_of(1000) {
                             if let Some(ref mut cb) = progress_callback {
-                                cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                                cb(
+                                    total_files_scanned,
+                                    total_dirs_scanned,
+                                    files.len(),
+                                    folders.len(),
+                                    total_size,
+                                );
                             }
                         }
                         continue;
@@ -182,11 +194,17 @@ impl SearchEngine {
                             break;
                         }
                     }
-                    
+
                     // 每扫描 1000 个文件输出一次进度
                     if total_files_scanned.is_multiple_of(1000) {
                         if let Some(ref mut cb) = progress_callback {
-                            cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                            cb(
+                                total_files_scanned,
+                                total_dirs_scanned,
+                                files.len(),
+                                folders.len(),
+                                total_size,
+                            );
                         }
                     }
                 } else if metadata.is_dir() {
@@ -206,11 +224,19 @@ impl SearchEngine {
                             break;
                         }
                     }
-                    
+
                     // 每扫描 100 个目录输出一次进度，或者每当匹配到目录时也输出
-                    if total_dirs_scanned.is_multiple_of(100) || !folders.is_empty() && folders.len().is_multiple_of(10) {
+                    if total_dirs_scanned.is_multiple_of(100)
+                        || !folders.is_empty() && folders.len().is_multiple_of(10)
+                    {
                         if let Some(ref mut cb) = progress_callback {
-                            cb(total_files_scanned, total_dirs_scanned, files.len(), folders.len(), total_size);
+                            cb(
+                                total_files_scanned,
+                                total_dirs_scanned,
+                                files.len(),
+                                folders.len(),
+                                total_size,
+                            );
                         }
                     }
                 }
