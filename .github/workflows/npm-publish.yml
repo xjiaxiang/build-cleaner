@@ -1,0 +1,62 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - "v*" # 当推送以 v 开头的 tag 时触发，例如 v0.1.0
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # 用于 npm 发布认证
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build npm package
+        run: |
+          cd npm
+          pnpm build
+
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=0.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package version
+        if: github.ref_type == 'tag'
+        run: |
+          cd npm
+          npm version ${{ steps.tag_version.outputs.version }} --no-git-tag-version
+
+      - name: Publish to npm
+        if: github.ref_type == 'tag'
+        working-directory: npm
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

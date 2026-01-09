@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*" # 当推送以 v 开头的 tag 时触发，例如 v0.1.0
+  workflow_dispatch: # 允许手动触发
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: bc-linux-x86_64
+            asset_name: bc-linux-x86_64.tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: bc-macos-x86_64
+            asset_name: bc-macos-x86_64.tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: bc-macos-aarch64
+            asset_name: bc-macos-aarch64.tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: bc-windows-x86_64
+            asset_name: bc-windows-x86_64.zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+
+      - name: Build binary
+        run: |
+          cargo build --release --package build-cleaner-cli --target ${{ matrix.target }}
+
+      - name: Prepare artifact (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p release
+          cp target/${{ matrix.target }}/release/bc release/
+          tar czf ${{ matrix.asset_name }} -C release bc
+
+      - name: Prepare artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/bc.exe" -Destination "release/"
+          Compress-Archive -Path release/bc.exe -DestinationPath ${{ matrix.asset_name }} -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.asset_name }}
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG_NAME="${{ github.ref_name }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          else
+            VERSION="dev-$(date +%Y%m%d-%H%M%S)"
+            TAG_NAME="v$VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_version.outputs.tag_name }}
+          name: Release ${{ steps.tag_version.outputs.version }}
+          body: |
+            ## Build Cleaner ${{ steps.tag_version.outputs.version }}
+
+            ### Downloads
+
+            - **Linux (x86_64)**: [bc-linux-x86_64.tar.gz](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/bc-linux-x86_64.tar.gz)
+            - **macOS (Intel)**: [bc-macos-x86_64.tar.gz](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/bc-macos-x86_64.tar.gz)
+            - **macOS (Apple Silicon)**: [bc-macos-aarch64.tar.gz](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/bc-macos-aarch64.tar.gz)
+            - **Windows (x86_64)**: [bc-windows-x86_64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/bc-windows-x86_64.zip)
+
+            ### Installation
+
+            #### Linux / macOS
+            ```bash
+            # Download and extract
+            tar -xzf bc-linux-x86_64.tar.gz  # or bc-macos-*.tar.gz
+            sudo mv bc /usr/local/bin/
+            ```
+
+            #### Windows
+            ```powershell
+            # Download and extract
+            Expand-Archive bc-windows-x86_64.zip
+            # Add to PATH or move to desired location
+            ```
+
+            ### Changes
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+          files: |
+            artifacts/**/*
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
