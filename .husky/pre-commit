@@ -1,0 +1,3 @@
+
+cargo clippy --workspace -- -D warnings && cargo fmt --check --all
+pnpm run -r lint

@@ -10,7 +10,9 @@
 		"build:npm": "cd npm && pnpm build",
 		"build:raycast": "cd raycast && pnpm build",
 		"build:all": "pnpm run build:rust && pnpm run build:npm && pnpm run build:raycast",
-		"clean": "cargo clean && rm -rf npm/dist npm/node_modules raycast/dist raycast/node_modules"
+		"clean": "cargo clean && rm -rf npm/dist npm/node_modules raycast/dist raycast/node_modules",
+		"precommit": "cargo clippy --workspace -- -D warnings && cargo fmt --check --all",
+		"prepare": "husky"
 	},
 	"keywords": [
 		"build-cleaner",
@@ -23,5 +25,8 @@
 	"engines": {
 		"node": ">=22.0.0"
 	},
-	"packageManager": "pnpm@10.27.0"
+	"packageManager": "pnpm@10.27.0",
+	"devDependencies": {
+		"husky": "^9.1.7"
+	}
 }

@@ -244,12 +244,10 @@ impl CommandExecutor {
                     let dir_size = {
                         use walkdir::WalkDir;
                         let mut size = 0u64;
-                        for entry in WalkDir::new(dir).into_iter() {
-                            if let Ok(entry) = entry {
-                                if entry.file_type().is_file() {
-                                    if let Ok(metadata) = entry.metadata() {
-                                        size += metadata.len();
-                                    }
+                        for entry in WalkDir::new(dir).into_iter().flatten() {
+                            if entry.file_type().is_file() {
+                                if let Ok(metadata) = entry.metadata() {
+                                    size += metadata.len();
                                 }
                             }
                         }

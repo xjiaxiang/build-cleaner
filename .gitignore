@@ -25,3 +25,5 @@ Thumbs.db
 _bmad
 _bmad-output
 
+# Husky (keep .husky directory in git)
+# .husky/_/

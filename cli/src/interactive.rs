@@ -24,6 +24,7 @@ fn format_size(bytes: u64) -> String {
 ///
 /// # 返回
 /// 如果用户确认返回 `Ok(true)`，否则返回 `Ok(false)`
+#[allow(dead_code)]
 pub fn confirm_deletion(search_result: &SearchResult, verbose: bool) -> Result<bool, CleanError> {
     println!("\n📋 Items to be moved to trash:");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -105,19 +106,21 @@ pub fn confirm_deletion(search_result: &SearchResult, verbose: bool) -> Result<b
 /// - `Ok(false)` - 用户跳过
 /// - `Err("all")` - 用户选择删除所有剩余项目
 /// - `Err("quit")` - 用户取消操作
-pub fn confirm_item_deletion(path: &std::path::Path, is_dir: bool, size: u64) -> Result<bool, String> {
+pub fn confirm_item_deletion(
+    path: &std::path::Path,
+    is_dir: bool,
+    size: u64,
+) -> Result<bool, String> {
     let item_type = if is_dir { "Directory" } else { "File" };
     let size_str = format_size(size);
-    
+
     print!(
         "\n🗑️  {}: {} (Size: {})\n   Delete? (y/N/a=all/q=quit): ",
         item_type,
         path.display(),
         size_str
     );
-    io::stdout()
-        .flush()
-        .map_err(|e| e.to_string())?;
+    io::stdout().flush().map_err(|e| e.to_string())?;
 
     let mut input = String::new();
     io::stdin()
@@ -135,8 +138,6 @@ pub fn confirm_item_deletion(path: &std::path::Path, is_dir: bool, size: u64) ->
 
 #[cfg(test)]
 mod tests {
-    use build_cleaner_core::search::SearchResult;
-    use std::path::PathBuf;
     use build_cleaner_core::search::SearchResult;
     use std::path::PathBuf;
 
