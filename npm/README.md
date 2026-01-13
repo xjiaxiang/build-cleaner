@@ -12,7 +12,7 @@ Node.js API for build-cleaner - 一个快速清理各种项目类型中临时文
 - 📦 **多项目类型支持**：自动识别 Node.js、Rust、Python、Go、Java 等项目类型
 - 🎯 **灵活的清理规则**：支持通配符模式、文件夹匹配、排除规则等
 - 📊 **详细的统计信息**：提供完整的清理报告和统计信息
-- 🔒 **安全可靠**：支持预览模式、安全检查等
+- 🔒 **安全可靠**：支持预览模式、安全检查、回收站删除等
 - 📝 **TypeScript 支持**：完整的 TypeScript 类型定义
 
 ## 安装
@@ -80,8 +80,9 @@ interface CleanOptions {
   dryRun?: boolean;
   
   /**
-   * 是否启用交互式确认（删除前询问用户确认）
-   * 注意：在 Node.js 环境中，交互式模式可能不适用
+   * 是否启用交互式确认（删除前逐个询问用户确认）
+   * 在交互模式下，会对每个文件/目录进行确认，选项：y=yes, N=skip, a=all, q=quit
+   * 注意：在非 CLI 环境中，交互式模式需要手动实现确认逻辑
    * 默认：false
    */
   interactive?: boolean;
@@ -421,7 +422,7 @@ Options:
                          可以多次使用，例如：--clean node_modules/ --clean dist/
   --config <FILE>         配置文件路径（可选，支持 YAML 和 JSON 格式）
   --dry-run               预览模式（不实际删除，仅显示将要删除的内容）
-  -i, --interactive       交互式确认（删除前询问用户确认）
+  -i, --interactive       交互式确认（删除前逐个询问用户确认，选项：y/N/a/q）
   -v, --verbose           详细输出（显示详细的清理报告）
   -q, --quiet             静默模式（最小输出，仅显示错误）
   --debug                 调试模式（显示调试日志）
@@ -566,14 +567,15 @@ async function safeClean() {
 1. **纯 Node.js 实现**：
    - 无需安装 Rust 或任何二进制文件
    - 直接使用 Node.js 标准库实现
-   - 使用 `walkdir` 等高效库进行文件系统遍历
+   - 使用高效的异步文件系统遍历
 
 2. **平台支持**：
    - 支持所有 Node.js 支持的平台（macOS、Linux、Windows）
    - 路径格式支持 `~` 展开（如 `~/projects`）
 
 3. **交互式模式**：
-   - 在 CLI 工具中，交互式模式会提示用户确认
+   - 在 CLI 工具中，交互式模式会对每个文件/目录逐个提示用户确认
+   - 选项：`y`=yes（删除）, `N`=skip（跳过）, `a`=all（删除所有剩余）, `q`=quit（退出）
    - 在编程 API 中，交互式模式需要手动实现确认逻辑
    - 建议使用 `dryRun` 进行预览后再执行删除
 
@@ -651,6 +653,12 @@ pnpm build
 ```bash
 pnpm test
 ```
+
+### 依赖
+
+- **trash**：回收站删除（支持跨平台）
+- **TypeScript**：类型安全
+- **Node.js 标准库**：文件系统操作
 
 ## 相关项目
 

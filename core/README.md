@@ -95,8 +95,9 @@ println!("Found {} directories and {} files",
 负责文件删除操作，包括：
 
 - **删除计划生成**：按深度排序，确保子目录先于父目录删除
-- **安全检查**：防止删除系统关键目录
+- **安全检查**：防止删除系统关键目录（如 `/usr`、`/etc`、`/` 等）
 - **删除执行**：支持 dry-run 模式
+- **回收站删除**：文件会被移到系统回收站，而不是永久删除（支持 macOS、Linux、Windows）
 - **错误处理**：收集删除失败的信息
 
 **主要类型：**
@@ -111,10 +112,10 @@ use build_cleaner_core::{DeleteEngine, SearchResult};
 let search_result = SearchEngine::search(/* ... */)?;
 let plan = DeleteEngine::create_delete_plan(&search_result);
 
-// Dry-run 模式
+// Dry-run 模式（不实际删除）
 let result = DeleteEngine::execute_deletion(&plan, true);
 
-// 实际删除
+// 实际删除（文件会移到回收站）
 let result = DeleteEngine::execute_deletion(&plan, false);
 ```
 
@@ -250,6 +251,7 @@ cargo test --package build-cleaner-core
 - `walkdir`：目录遍历
 - `thiserror`：错误处理
 - `log`：日志记录
+- `trash`：回收站删除（支持跨平台）
 - `tempfile`：测试工具（dev-dependency）
 
 ## 许可证

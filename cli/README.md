@@ -6,6 +6,8 @@ build-cleaner 的命令行工具，提供用户友好的 CLI 接口。
 
 `build-cleaner-cli` 是一个 Rust 命令行工具，提供了清理项目临时文件和目录的命令行接口。它基于 `build-cleaner-core` 库构建，提供了完整的命令行功能。
 
+**重要**：文件会被移到系统回收站，而不是永久删除，可以从回收站恢复。
+
 ## 安装
 
 ### 从源码构建
@@ -182,17 +184,33 @@ bc --dry-run ~/projects
 ### 示例 3：交互式确认
 
 ```bash
-# 交互式确认删除
+# 交互式确认删除（逐个确认）
 bc --interactive ~/projects
 ```
 
 输出示例：
 ```
-Found 5 directories and 10 files to delete.
-Do you want to proceed? (y/N): y
-🧹 Cleaning...
+📋 Found 5 directories and 10 files to delete (15 items total).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  You will be prompted for each item. Options: y=yes, N=skip, a=all, q=quit
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗑️  File: /path/to/file.log (Size: 1.2 KB)
+   Delete? (y/N/a=all/q=quit): y
+
+🗑️  Directory: /path/to/node_modules (Size: 150 MB)
+   Delete? (y/N/a=all/q=quit): y
+
+...
+
 ✅ Cleanup completed
 ```
+
+**交互式模式选项**：
+- `y` 或 `yes`：删除当前项目
+- `N` 或直接回车：跳过当前项目
+- `a` 或 `all`：删除所有剩余项目（不再询问）
+- `q` 或 `quit`：退出清理操作
 
 ### 示例 4：详细输出
 
@@ -240,6 +258,13 @@ options:
 ```bash
 bc --config .bc.yaml ~/projects
 ```
+
+## 安全特性
+
+- **回收站删除**：文件会被移到系统回收站（trash），而不是永久删除
+- **安全检查**：防止删除系统关键目录（如 `/usr`、`/etc`、`/` 等）
+- **预览模式**：支持 `--dry-run` 预览将要删除的内容
+- **交互式确认**：支持 `--interactive` 逐个确认删除（选项：y/N/a/q）
 
 ## 错误处理
 
@@ -307,6 +332,8 @@ RUST_LOG=debug cargo run --bin bc -- [args]
 - `build-cleaner-core`：核心功能库
 - `clap`：命令行参数解析
 - `log` / `env_logger`：日志记录
+- `trash`：回收站删除（支持跨平台）
+- `trash`：回收站删除（支持跨平台）
 
 ## 许可证
 
