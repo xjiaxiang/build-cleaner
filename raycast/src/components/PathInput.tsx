@@ -11,7 +11,7 @@ interface PathInputProps {
   selectedItemId?: string;
   onSelectionChange: (id: string | null) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
-  onEnterKey?: () => void;
+  onEnterKey?: (selectedPath: string) => void;
 }
 
 export function PathInput({
@@ -47,7 +47,7 @@ export function PathInput({
     // 如果有多个建议，找到第一个非精确匹配的建议（用于补全）
     // 优先选择匹配分数最高的
     const trimmedPath = inputPath.trim();
-    const bestMatch = suggestions.find((s) => s.path !== trimmedPath);
+    const bestMatch = suggestions.find(s => s.path !== trimmedPath);
     return bestMatch?.path || null;
   };
 
@@ -72,29 +72,6 @@ export function PathInput({
       {/* 路径自动完成建议 */}
       {suggestions.length > 0 && (
         <>
-          {/* {suggestions.length === 1 && (
-						<List.Item
-							id="auto-complete-hint"
-							title="✨ 自动完成"
-							subtitle={`按 Enter 使用: ${suggestions[0].path}`}
-							icon={Icon.LightBulb}
-							actions={
-								<ActionPanel>
-									<Action
-										title="快速补全"
-										onAction={() => handleTabComplete(suggestions[0].path)}
-										icon={Icon.ArrowRight}
-										shortcut={{modifiers: ["cmd"], key: "arrowRight"}}
-									/>
-									<Action
-										title="使用此路径"
-										onAction={() => handleSelectPath(suggestions[0].path)}
-										icon={Icon.CheckCircle}
-									/>
-								</ActionPanel>
-							}
-						/>
-					)} */}
           {suggestions.map((suggestion, index) => {
             const expanded = expandPath(suggestion.path);
             const pathExists = existsSync(expanded);
@@ -113,16 +90,13 @@ export function PathInput({
                 actions={
                   <ActionPanel>
                     {/* 精确匹配且路径有效时，确认清理应该是第一个 Action */}
-                    {isExactMatch &&
-                      pathExists &&
-                      isUnderHome &&
-                      onEnterKey && (
-                        <Action
-                          title="Confirm Cleanup"
-                          onAction={onEnterKey}
-                          icon={Icon.CheckCircle}
-                        />
-                      )}
+                    {pathExists && isUnderHome && (
+                      <Action
+                        title="Confirm Cleanup"
+                        onAction={() => onEnterKey?.(suggestion.path)}
+                        icon={Icon.CheckCircle}
+                      />
+                    )}
                     {canTabComplete && (
                       <Action
                         title="Quick Complete"

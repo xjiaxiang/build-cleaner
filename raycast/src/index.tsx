@@ -15,19 +15,18 @@ export default function Command() {
   const [inputPath, setInputPath] = useState<string>(
     preferences.defaultPath || "",
   );
-  const [selectedPatterns, setSelectedPatterns] = useState<string[]>(
+  const [selectedPatterns] = useState<string[]>(
     preferences.defaultPatterns && preferences.defaultPatterns.trim()
       ? preferences.defaultPatterns
           .split(",")
-          .map((p) => p.trim())
-          .filter((p) => p)
+          .map(p => p.trim())
+          .filter(p => p)
       : [],
   );
   const [dryRun] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(
     undefined,
   );
-  const [customPatterns, setCustomPatterns] = useState<string[]>([]);
   const [pathConfirmed, setPathConfirmed] = useState(false);
 
   const { isLoading, result, executeClean, resetResult } = useClean();
@@ -50,8 +49,8 @@ export default function Command() {
   };
 
   // 处理回车键：检查路径并显示确认对话框
-  const handleEnterKey = () => {
-    const trimmedPath = inputPath.trim();
+  const handleEnterKey = (selectedPath: string) => {
+    const trimmedPath = selectedPath.trim();
     if (!trimmedPath) {
       showToast({
         style: Toast.Style.Failure,
@@ -80,9 +79,8 @@ export default function Command() {
       });
       return;
     }
-
-    // 路径存在且在 ~ 目录下，显示确认对话框
     setPathConfirmed(true);
+    setInputPath(selectedPath);
     // 延迟设置选中项，确保 ConfirmDialog 已经渲染
     setTimeout(() => {
       setSelectedItemId("action-preview");
@@ -117,7 +115,11 @@ export default function Command() {
             : "Enter path and press Enter to confirm (only ~ directory, e.g., ~/Documents)..."
       }
       searchText={inputPath}
-      onSearchTextChange={setInputPath}
+      onSearchTextChange={val => {
+        setInputPath(val);
+        // 重置
+        setPathConfirmed(false);
+      }}
       selectedItemId={selectedItemId}
       onSelectionChange={handleSelectionChange}
     >
@@ -137,18 +139,13 @@ export default function Command() {
           <ConfirmDialog
             inputPath={inputPath}
             selectedPatterns={selectedPatterns}
-            onConfirm={(options) => {
+            onConfirm={options => {
               setPathConfirmed(false);
               executeClean(options);
             }}
             onCancel={handleConfirmCancel}
           />
-          <PatternSelector
-            selectedPatterns={selectedPatterns}
-            onPatternsChange={setSelectedPatterns}
-            customPatterns={customPatterns}
-            onCustomPatternsChange={setCustomPatterns}
-          />
+          <PatternSelector selectedPatterns={selectedPatterns} />
 
           {/* <SettingsView
 						inputPath={inputPath}

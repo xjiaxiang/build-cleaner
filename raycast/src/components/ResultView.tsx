@@ -63,24 +63,24 @@ export function ResultView({
 
     if (deletedDirs.length > 0) {
       lines.push("", `Deleted directories (${deletedDirs.length}):`);
-      deletedDirs.forEach((dir) => lines.push(`  ${dir}`));
+      deletedDirs.forEach(dir => lines.push(`  ${dir}`));
     }
 
     if (deletedFiles.length > 0) {
       lines.push("", `Deleted files (${deletedFiles.length}):`);
-      deletedFiles.forEach((file) => lines.push(`  ${file}`));
+      deletedFiles.forEach(file => lines.push(`  ${file}`));
     }
 
     if (failedDirs.length > 0) {
       lines.push("", `Failed directories (${failedDirs.length}):`);
-      failedDirs.forEach((item) =>
+      failedDirs.forEach(item =>
         lines.push(`  ${item.path} - Error: ${item.error}`),
       );
     }
 
     if (failedFiles.length > 0) {
       lines.push("", `Failed files (${failedFiles.length}):`);
-      failedFiles.forEach((item) =>
+      failedFiles.forEach(item =>
         lines.push(`  ${item.path} - Error: ${item.error}`),
       );
     }

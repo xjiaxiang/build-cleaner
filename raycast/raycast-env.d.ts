@@ -7,7 +7,12 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-type ExtensionPreferences = {}
+type ExtensionPreferences = {
+  /** Default Path - The default path to clean up */
+  "defaultPath": string,
+  /** Default Patterns - The default patterns to clean up */
+  "defaultPatterns": string
+}
 
 /** Preferences accessible in all the extension's commands */
 declare type Preferences = ExtensionPreferences

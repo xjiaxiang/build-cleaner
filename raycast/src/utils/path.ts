@@ -111,11 +111,11 @@ export function getPathSuggestions(inputPath: string): PathSuggestion[] {
         matchScore: 0,
       },
     ]
-      .filter((item) => {
+      .filter(item => {
         const expanded = expandPath(item.path);
         return existsSync(expanded) && isUnderHomeDir(item.path);
       })
-      .map((item) => ({ ...item, matchScore: 0 }));
+      .map(item => ({ ...item, matchScore: 0 }));
   }
 
   const trimmedPath = inputPath.trim();
@@ -133,14 +133,11 @@ export function getPathSuggestions(inputPath: string): PathSuggestion[] {
     if (existsSync(expandedPath)) {
       const stat = statSync(expandedPath);
       if (stat.isDirectory()) {
-        // 如果路径以 / 结尾，列出所有子目录（类似 shell 的 tab 补全）
-        // 或者如果输入的是 ~，也应该列出子目录
+        // 只有当路径以 / 结尾时，才列出所有子目录（类似 shell 的 tab 补全）
         const shouldListChildren =
-          trimmedPath.endsWith("/") ||
-          trimmedPath.endsWith("\\") ||
-          trimmedPath === "~";
+          trimmedPath.endsWith("/") || trimmedPath.endsWith("\\");
 
-        if (shouldListChildren || trimmedPath === expandedPath) {
+        if (shouldListChildren) {
           try {
             const entries = readdirSync(expandedPath, {
               withFileTypes: true,
@@ -367,7 +364,7 @@ export function getPathSuggestions(inputPath: string): PathSuggestion[] {
 
   // 去重（基于路径），并确保所有建议都在 ~ 目录下
   const seen = new Set<string>();
-  const uniqueSuggestions = suggestions.filter((s) => {
+  const uniqueSuggestions = suggestions.filter(s => {
     if (seen.has(s.path)) {
       return false;
     }
