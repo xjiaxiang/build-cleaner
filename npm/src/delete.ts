@@ -1,5 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
+import {execSync} from "child_process";
 import trash from "trash";
 import {SearchResult} from "./search";
 
@@ -30,6 +32,64 @@ export interface DeleteResult {
 }
 
 /**
+ * 安全地将文件/目录移到回收站（跨平台兼容，支持 Raycast 环境）
+ */
+async function safeTrash(filePath: string): Promise<void> {
+	try {
+		// 首先尝试使用 trash 包
+		await trash(filePath);
+	} catch (error) {
+		// 如果 trash 包失败（例如在 Raycast 环境中），使用平台原生方法
+		const platform = os.platform();
+
+		if (platform === "darwin") {
+			// macOS: 使用 osascript 通过 AppleScript 移动文件到回收站
+			const escapedPath = filePath.replace(/"/g, '\\"');
+			const script = `tell application "Finder" to move POSIX file "${escapedPath}" to trash`;
+			try {
+				execSync(`osascript -e '${script}'`, {stdio: "ignore"});
+			} catch (osascriptError) {
+				// 如果 osascript 也失败，抛出原始错误
+				throw error;
+			}
+		} else if (platform === "win32") {
+			// Windows: 使用 PowerShell 移动文件到回收站
+			const escapedPath = filePath.replace(/'/g, "''").replace(/\\/g, "/");
+			const script = `$path = '${escapedPath}'; $shell = New-Object -ComObject Shell.Application; $folder = $shell.NameSpace(0xA); $item = $shell.NameSpace($path).ParseName((Split-Path $path -Leaf)); if ($item) { $folder.MoveHere($item) }`;
+			try {
+				execSync(`powershell -Command "${script}"`, {stdio: "ignore"});
+			} catch (powershellError) {
+				// 如果 PowerShell 也失败，抛出原始错误
+				throw error;
+			}
+		} else if (platform === "linux") {
+			// Linux: 尝试使用 gvfs-trash 或 xdg-trash
+			try {
+				// 首先尝试 gvfs-trash (GNOME)
+				execSync(`gvfs-trash "${filePath}"`, {stdio: "ignore"});
+			} catch (gvfsError) {
+				try {
+					// 如果 gvfs-trash 失败，尝试使用 xdg-trash (通用)
+					// 注意：xdg-trash 可能需要安装
+					execSync(`xdg-trash "${filePath}"`, {stdio: "ignore"});
+				} catch (xdgError) {
+					// 如果都失败，尝试使用 trash-cli (如果已安装)
+					try {
+						execSync(`trash "${filePath}"`, {stdio: "ignore"});
+					} catch (trashCliError) {
+						// 如果所有方法都失败，抛出原始错误
+						throw error;
+					}
+				}
+			}
+		} else {
+			// 未知平台，抛出原始错误
+			throw error;
+		}
+	}
+}
+
+/**
  * 删除引擎，负责创建删除计划和执行删除操作
  */
 export class DeleteEngine {
@@ -57,7 +117,7 @@ export class DeleteEngine {
 	static checkSafety(pathStr: string): void {
 		let canonical: string;
 		try {
-			canonical = fs.realpathSync(pathStr);
+			canonical = path.resolve(pathStr);
 		} catch {
 			throw new Error(`Path not found: ${pathStr}`);
 		}
@@ -211,7 +271,7 @@ export class DeleteEngine {
 					}
 				}
 
-				await trash(file);
+				await safeTrash(file);
 				totalSize += fileSize;
 				deletedFiles.push(file);
 				if (!quiet) {
@@ -269,7 +329,7 @@ export class DeleteEngine {
 					}
 				}
 
-				await trash(dir);
+				await safeTrash(dir);
 				totalSize += dirSize;
 				deletedDirs.push(dir);
 				if (!quiet) {
@@ -323,6 +383,7 @@ export class DeleteEngine {
 		const failedDirs: Array<{path: string; error: string}> = [];
 		let totalSize = 0;
 
+		console.log("executeDeletion", dryRun);
 		if (dryRun) {
 			// 预览模式：只计算大小，不实际删除
 			for (const file of plan.files) {
@@ -345,18 +406,21 @@ export class DeleteEngine {
 			};
 		}
 
+		console.log("executeDeletion", plan.files);
 		// 实际删除文件（移到回收站）
 		for (const file of plan.files) {
 			try {
 				this.checkSafety(file);
+				console.log("checkSafety", file);
 				const stats = fs.statSync(file);
 				const fileSize = stats.size;
 
 				// 将文件移到回收站而不是直接删除
-				await trash(file);
+				await safeTrash(file);
 				totalSize += fileSize;
 				deletedFiles.push(file);
 			} catch (error) {
+				console.error(error);
 				failedFiles.push({
 					path: file,
 					error: error instanceof Error ? error.message : String(error),
@@ -368,10 +432,12 @@ export class DeleteEngine {
 		for (const dir of plan.dirs) {
 			try {
 				this.checkSafety(dir);
+				console.log("checkSafety", dir);
 				// 将目录移到回收站而不是直接删除
-				await trash(dir);
+				await safeTrash(dir);
 				deletedDirs.push(dir);
 			} catch (error) {
+				console.error(error);
 				failedDirs.push({
 					path: dir,
 					error: error instanceof Error ? error.message : String(error),
