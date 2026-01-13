@@ -68,7 +68,7 @@ export function PathInput({
   };
 
   return (
-    <List.Section title="路径输入">
+    <List.Section title="Path Input">
       {/* 路径自动完成建议 */}
       {suggestions.length > 0 && (
         <>
@@ -118,27 +118,27 @@ export function PathInput({
                       isUnderHome &&
                       onEnterKey && (
                         <Action
-                          title="确认清理"
+                          title="Confirm Cleanup"
                           onAction={onEnterKey}
                           icon={Icon.CheckCircle}
                         />
                       )}
                     {canTabComplete && (
                       <Action
-                        title="快速补全"
+                        title="Quick Complete"
                         onAction={() => handleTabComplete(suggestion.path)}
                         icon={Icon.ArrowRight}
                         shortcut={{ modifiers: ["cmd"], key: "arrowRight" }}
                       />
                     )}
                     <Action
-                      title="使用此路径"
+                      title="Use This Path"
                       onAction={() => handleSelectPath(suggestion.path)}
                       icon={Icon.CheckCircle}
                     />
                     {pathExists && (
                       <Action
-                        title="在 Finder 中打开"
+                        title="Open in Finder"
                         onAction={() => open(expanded)}
                         icon={Icon.Finder}
                       />
@@ -153,16 +153,16 @@ export function PathInput({
       {!inputPath && (
         <List.Item
           id="path-hint"
-          title="💡 提示"
-          subtitle="输入路径时自动显示匹配的目录建议（类似 shell tab 补全）"
+          title="💡 Tip"
+          subtitle="Auto-complete suggestions appear while typing (similar to shell tab completion)"
           icon={Icon.Info}
         />
       )}
       {inputPath && suggestions.length === 0 && (
         <List.Item
           id="no-suggestions"
-          title="⚠️ 无匹配建议"
-          subtitle="未找到匹配的路径，请检查输入是否正确"
+          title="⚠️ No matching suggestions"
+          subtitle="No matching paths found, please check your input"
           icon={Icon.ExclamationMark}
         />
       )}

@@ -100,37 +100,37 @@ function printHelp() {
 	console.log(`
 Usage: build-cleaner-node [OPTIONS] <PATHS...>
 
-批量快速清理项目临时目录和文件的命令行工具
+A fast tool for batch cleaning temporary directories and files in projects
 
 Arguments:
-  <PATHS...>              要搜索的路径列表（必需，至少一个）
+  <PATHS...>              List of paths to search (required, at least one)
 
 Options:
-  --clean <PATTERN>       清理模式列表（文件夹以 / 结尾，文件使用通配符）
-                         可以多次使用，例如：--clean node_modules/ --clean dist/
-  --config <FILE>         配置文件路径（可选，支持 YAML 和 JSON 格式）
-  --dry-run               预览模式（不实际删除，仅显示将要删除的内容）
-  -i, --interactive       交互式确认（删除前询问用户确认）
-  -v, --verbose           详细输出（显示详细的清理报告）
-  -q, --quiet             静默模式（最小输出，仅显示错误）
-  --debug                 调试模式（显示调试日志）
-  -h, --help              显示帮助信息
-  -V, --version           显示版本信息
+  --clean <PATTERN>       Cleanup pattern list (folders end with /, files use wildcards)
+                         Can be used multiple times, e.g.: --clean node_modules/ --clean dist/
+  --config <FILE>         Configuration file path (optional, supports YAML and JSON formats)
+  --dry-run               Preview mode (does not actually delete, only shows what will be deleted)
+  -i, --interactive       Interactive confirmation (asks for user confirmation before deletion)
+  -v, --verbose           Verbose output (shows detailed cleanup report)
+  -q, --quiet             Quiet mode (minimal output, only shows errors)
+  --debug                 Debug mode (shows debug logs)
+  -h, --help              Show help information
+  -V, --version           Show version information
 
 Examples:
-  # 清理当前目录
+  # Clean current directory
   build-cleaner-node .
 
-  # 预览模式
+  # Preview mode
   build-cleaner-node --dry-run ~/projects
 
-  # 指定清理模式
+  # Specify cleanup patterns
   build-cleaner-node --clean node_modules/ --clean dist/ .
 
-  # 使用配置文件
+  # Use configuration file
   build-cleaner-node --config .bc.yaml ~/projects
 
-  # 详细输出
+  # Verbose output
   build-cleaner-node --verbose ~/projects
 `);
 }

@@ -36,33 +36,33 @@ export function PatternSelector({
           onCustomPatternsChange([...customPatterns, pattern]);
           showToast({
             style: Toast.Style.Success,
-            title: "已添加自定义模式",
+            title: "Custom pattern added",
             message: pattern,
           });
         } else {
           showToast({
             style: Toast.Style.Failure,
-            title: "模式已存在",
+            title: "Pattern already exists",
           });
         }
       } else {
         showToast({
           style: Toast.Style.Failure,
-          title: "未选中文本",
-          message: "请先选中要添加的模式文本，然后点击添加",
+          title: "No text selected",
+          message: "Please select the pattern text first, then click add",
         });
       }
     } catch {
       showToast({
         style: Toast.Style.Failure,
-        title: "无法获取选中文本",
-        message: "请手动输入模式名称",
+        title: "Cannot get selected text",
+        message: "Please enter the pattern name manually",
       });
     }
   };
 
   return (
-    <List.Section title="清理模式">
+    <List.Section title="Cleanup Patterns">
       {COMMON_PATTERNS.map((pattern) => {
         const isSelected = selectedPatterns.includes(pattern.name);
         return (
@@ -75,7 +75,7 @@ export function PatternSelector({
             actions={
               <ActionPanel>
                 <Action
-                  title={isSelected ? "取消选择" : "选择"}
+                  title={isSelected ? "Deselect" : "Select"}
                   onAction={() => {
                     if (isSelected) {
                       onPatternsChange(
@@ -92,7 +92,7 @@ export function PatternSelector({
           />
         );
       })}
-      {/* 自定义模式 */}
+      {/* Custom patterns */}
       {customPatterns.map((customPattern, index) => {
         const isSelected = selectedPatterns.includes(customPattern);
         return (
@@ -100,12 +100,12 @@ export function PatternSelector({
             id={`custom-pattern-${index}`}
             key={`custom-${customPattern}-${index}`}
             title={customPattern}
-            subtitle="自定义清理模式"
+            subtitle="Custom cleanup pattern"
             icon={isSelected ? Icon.CheckCircle : Icon.Circle}
             actions={
               <ActionPanel>
                 <Action
-                  title={isSelected ? "取消选择" : "选择"}
+                  title={isSelected ? "Deselect" : "Select"}
                   onAction={() => {
                     if (isSelected) {
                       onPatternsChange(
@@ -118,7 +118,7 @@ export function PatternSelector({
                   icon={isSelected ? Icon.Circle : Icon.CheckCircle}
                 />
                 <Action
-                  title="删除自定义模式"
+                  title="Delete Custom Pattern"
                   onAction={() => {
                     onCustomPatternsChange(
                       customPatterns.filter((_, i) => i !== index),
@@ -135,16 +135,16 @@ export function PatternSelector({
           />
         );
       })}
-      {/* 添加自定义模式 */}
+      {/* Add custom pattern */}
       <List.Item
         id="add-custom-pattern"
-        title="➕ 添加自定义清理模式"
-        subtitle="选中模式文本后点击添加（如 *.bak 或 cache/）"
+        title="➕ Add Custom Cleanup Pattern"
+        subtitle="Select pattern text then click add (e.g., *.bak or cache/)"
         icon={Icon.Plus}
         actions={
           <ActionPanel>
             <Action
-              title="添加自定义模式"
+              title="Add Custom Pattern"
               onAction={handleAddCustomPattern}
               icon={Icon.Plus}
             />

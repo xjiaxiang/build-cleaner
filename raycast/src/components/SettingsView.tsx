@@ -18,41 +18,49 @@ export function SettingsView({
   onEditPath,
 }: SettingsViewProps) {
   return (
-    <List.Section title="当前设置">
+    <List.Section title="Current Settings">
       <List.Item
         id="setting-path"
-        title="路径"
+        title="Path"
         subtitle={
           inputPath
             ? `${inputPath}${existsSync(expandPath(inputPath)) ? " ✓" : " ⚠️"}`
-            : "未输入路径"
+            : "No path entered"
         }
         icon={Icon.Folder}
         actions={
           <ActionPanel>
-            <Action title="编辑路径" onAction={onEditPath} icon={Icon.Pencil} />
+            <Action
+              title="Edit Path"
+              onAction={onEditPath}
+              icon={Icon.Pencil}
+            />
           </ActionPanel>
         }
       />
       <List.Item
         id="setting-patterns"
-        title="清理模式"
+        title="Cleanup Patterns"
         subtitle={
           selectedPatterns.length > 0
             ? selectedPatterns.join(", ")
-            : "使用默认配置"
+            : "Use default configuration"
         }
         icon={Icon.List}
       />
       <List.Item
         id="setting-dryrun"
-        title="预览模式"
-        subtitle={dryRun ? "开启（不会实际删除）" : "关闭（将实际删除）"}
+        title="Preview Mode"
+        subtitle={
+          dryRun
+            ? "Enabled (will not actually delete)"
+            : "Disabled (will actually delete)"
+        }
         icon={dryRun ? Icon.Eye : Icon.Trash}
         actions={
           <ActionPanel>
             <Action
-              title={dryRun ? "关闭预览模式" : "开启预览模式"}
+              title={dryRun ? "Disable Preview Mode" : "Enable Preview Mode"}
               onAction={() => onDryRunChange(!dryRun)}
               icon={dryRun ? Icon.EyeDisabled : Icon.Eye}
             />

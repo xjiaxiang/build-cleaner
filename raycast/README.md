@@ -2,6 +2,8 @@
 
 Raycast 扩展，提供快速清理项目临时文件和目录的功能。
 
+**[中文](README.md) | [English](README-eng.md)**
+
 ## 功能特性
 
 - 🚀 **快速清理**：通过 Raycast 快速访问清理功能
@@ -234,9 +236,9 @@ raycast/
 
 ## 相关项目
 
-- [build-cleaner-core](../core/) - Rust 核心库
-- [build-cleaner-cli](../cli/) - Rust CLI 工具
-- [@build-cleaner/node](../npm/) - Node.js API 包
+- [build-cleaner-core](../core/README.md) - Rust 核心库
+- [build-cleaner-cli](../cli/README.md) - Rust CLI 工具
+- [@build-cleaner/node](../npm/README.md) - Node.js API 包
 
 ## 许可证
 

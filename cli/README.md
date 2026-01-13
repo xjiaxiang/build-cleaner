@@ -2,6 +2,8 @@
 
 build-cleaner 的命令行工具，提供用户友好的 CLI 接口。
 
+**[中文](README.md) | [English](README-eng.md)**
+
 ## 概述
 
 `build-cleaner-cli` 是一个 Rust 命令行工具，提供了清理项目临时文件和目录的命令行接口。它基于 `build-cleaner-core` 库构建，提供了完整的命令行功能。
@@ -332,7 +334,6 @@ RUST_LOG=debug cargo run --bin bc -- [args]
 - `build-cleaner-core`：核心功能库
 - `clap`：命令行参数解析
 - `log` / `env_logger`：日志记录
-- `trash`：回收站删除（支持跨平台）
 - `trash`：回收站删除（支持跨平台）
 
 ## 许可证

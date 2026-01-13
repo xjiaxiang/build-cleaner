@@ -2,6 +2,8 @@
 
 Node.js API for build-cleaner - 一个快速清理各种项目类型中临时文件和目录的工具。
 
+**[中文](README.md) | [English](README-eng.md)**
+
 ## 简介
 
 `@build-cleaner/node` 是 build-cleaner 的 Node.js 实现，提供了在 Node.js 环境中使用 build-cleaner 功能的 TypeScript/JavaScript API。它是纯 Node.js 实现，不依赖 Rust CLI，可以直接在 Node.js 环境中使用。
@@ -662,9 +664,9 @@ pnpm test
 
 ## 相关项目
 
-- [build-cleaner-core](../core/) - Rust 核心库（可选，用于 Rust CLI）
-- [build-cleaner-cli](../cli/) - Rust CLI 工具（可选，独立工具）
-- [build-cleaner-raycast](../raycast/) - Raycast 插件
+- [build-cleaner-core](../core/README.md) - Rust 核心库（可选，用于 Rust CLI）
+- [build-cleaner-cli](../cli/README.md) - Rust CLI 工具（可选，独立工具）
+- [build-cleaner-raycast](../raycast/README.md) - Raycast 插件
 
 ## 许可证
 

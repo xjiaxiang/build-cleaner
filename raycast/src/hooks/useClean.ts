@@ -8,39 +8,39 @@ export function useClean() {
 
   const executeClean = async (options: CleanOptions) => {
     setIsLoading(true);
-    // 显示加载提示
+    // Show loading toast
     const loadingToast = await showToast({
       style: Toast.Style.Animated,
-      title: options.dryRun ? "正在预览..." : "正在清理...",
-      message: "请稍候，正在处理文件",
+      title: options.dryRun ? "Previewing..." : "Cleaning...",
+      message: "Please wait, processing files",
     });
 
     try {
-      // 直接调用 npm 包的 clean 函数
+      // Directly call the npm package's clean function
       const cleanResult = await clean(options);
 
-      // 先隐藏加载提示
+      // Hide loading toast first
       await loadingToast.hide();
 
-      // 设置结果，这会触发视图切换到结果页面
+      // Set result, this will trigger view switch to result page
       setResult(cleanResult);
 
-      // 延迟显示成功提示，确保视图已经切换
+      // Delay showing success toast to ensure view has switched
       setTimeout(async () => {
         await showToast({
           style: Toast.Style.Success,
-          title: "清理完成",
-          message: `删除了 ${cleanResult.dirsDeleted} 个目录，${cleanResult.filesDeleted} 个文件`,
+          title: "Cleanup completed",
+          message: `Deleted ${cleanResult.dirsDeleted} directories, ${cleanResult.filesDeleted} files`,
         });
       }, 100);
     } catch (error) {
-      // 隐藏加载提示
+      // Hide loading toast
       await loadingToast.hide();
 
       await showToast({
         style: Toast.Style.Failure,
-        title: "清理失败",
-        message: error instanceof Error ? error.message : "未知错误",
+        title: "Cleanup failed",
+        message: error instanceof Error ? error.message : "Unknown error",
       });
     } finally {
       setIsLoading(false);

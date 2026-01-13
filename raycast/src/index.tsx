@@ -55,8 +55,8 @@ export default function Command() {
     if (!trimmedPath) {
       showToast({
         style: Toast.Style.Failure,
-        title: "请输入路径",
-        message: "在搜索框中输入要清理的路径",
+        title: "Please enter a path",
+        message: "Enter the path to clean in the search box",
       });
       return;
     }
@@ -65,8 +65,8 @@ export default function Command() {
     if (!existsSync(expanded)) {
       showToast({
         style: Toast.Style.Failure,
-        title: "路径不存在",
-        message: `路径 ${expanded} 不存在，请检查输入是否正确`,
+        title: "Path does not exist",
+        message: `Path ${expanded} does not exist, please check your input`,
       });
       return;
     }
@@ -75,8 +75,8 @@ export default function Command() {
     if (!isUnderHomeDir(trimmedPath)) {
       showToast({
         style: Toast.Style.Failure,
-        title: "路径限制",
-        message: `路径必须在 ~ 目录下，当前路径: ${expanded}`,
+        title: "Path restriction",
+        message: `Path must be under ~ directory, current path: ${expanded}`,
       });
       return;
     }
@@ -111,10 +111,10 @@ export default function Command() {
       isLoading={isLoading}
       searchBarPlaceholder={
         isLoading
-          ? "正在处理..."
+          ? "Processing..."
           : pathConfirmed
-            ? "确认清理操作..."
-            : "输入路径后按 Enter 确认（仅支持 ~ 目录下，如 ~/Documents）..."
+            ? "Confirm cleanup operation..."
+            : "Enter path and press Enter to confirm (only ~ directory, e.g., ~/Documents)..."
       }
       searchText={inputPath}
       onSearchTextChange={setInputPath}
@@ -122,11 +122,11 @@ export default function Command() {
       onSelectionChange={handleSelectionChange}
     >
       {isLoading && (
-        <List.Section title="处理中">
+        <List.Section title="Processing">
           <List.Item
             id="loading-item"
-            title={dryRun ? "正在预览清理..." : "正在执行清理..."}
-            subtitle="请稍候，正在处理文件"
+            title={dryRun ? "Previewing cleanup..." : "Executing cleanup..."}
+            subtitle="Please wait, processing files"
             icon={Icon.Clock}
           />
         </List.Section>

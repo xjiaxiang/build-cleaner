@@ -2,6 +2,8 @@
 
 build-cleaner 的核心功能库，提供文件搜索、删除、配置管理等核心功能。
 
+**[中文](README.md) | [English](README-eng.md)**
+
 ## 概述
 
 `build-cleaner-core` 是一个 Rust 库，提供了清理项目临时文件和目录的核心功能。它被设计为可复用的库，可以被 CLI 工具、npm 包或其他应用程序调用。

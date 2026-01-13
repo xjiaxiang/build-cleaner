@@ -5,40 +5,40 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(
     name = "bc",
-    about = "批量快速清理项目临时目录和文件的命令行工具",
+    about = "A fast tool for batch cleaning temporary directories and files in projects",
     long_about = None,
     version = env!("CARGO_PKG_VERSION")
 )]
 pub struct Args {
-    /// 要搜索的路径列表（必需，至少一个）
+    /// List of paths to search (required, at least one)
     #[arg(required = true, num_args = 1..)]
     pub paths: Vec<PathBuf>,
 
-    /// 清理模式列表（文件夹以 / 结尾，文件使用通配符）
+    /// Cleanup pattern list (folders end with /, files use wildcards)
     #[arg(long = "clean", num_args = 1..)]
     pub clean_patterns: Vec<String>,
 
-    /// 配置文件路径（可选，支持 YAML 和 JSON 格式）
+    /// Configuration file path (optional, supports YAML and JSON formats)
     #[arg(long = "config")]
     pub config_file: Option<PathBuf>,
 
-    /// 是否启用预览模式（不实际删除，仅显示将要删除的内容）
+    /// Enable preview mode (does not actually delete, only shows what will be deleted)
     #[arg(long = "dry-run")]
     pub dry_run: bool,
 
-    /// 是否启用交互式确认（删除前询问用户确认）
+    /// Enable interactive confirmation (asks for user confirmation before deletion)
     #[arg(long = "interactive", short = 'i')]
     pub interactive: bool,
 
-    /// 是否启用详细输出（显示详细的清理报告）
+    /// Enable verbose output (shows detailed cleanup report)
     #[arg(long = "verbose", short = 'v')]
     pub verbose: bool,
 
-    /// 是否启用静默模式（最小输出，仅显示错误）
+    /// Enable quiet mode (minimal output, only shows errors)
     #[arg(long = "quiet", short = 'q')]
     pub quiet: bool,
 
-    /// 是否启用调试模式（显示调试日志）
+    /// Enable debug mode (shows debug logs)
     #[arg(long = "debug")]
     pub debug: bool,
 }

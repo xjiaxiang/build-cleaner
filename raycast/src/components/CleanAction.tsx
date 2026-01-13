@@ -27,8 +27,8 @@ export function CleanAction({
     if (!inputPath || inputPath.trim() === "") {
       showToast({
         style: Toast.Style.Failure,
-        title: "请输入路径",
-        message: "在搜索框中输入要清理的路径",
+        title: "Please enter a path",
+        message: "Enter the path to clean in the search box",
       });
       return;
     }
@@ -36,8 +36,8 @@ export function CleanAction({
     if (!existsSync(expandedPath)) {
       showToast({
         style: Toast.Style.Failure,
-        title: "路径不存在",
-        message: `路径 ${expandedPath} 不存在`,
+        title: "Path does not exist",
+        message: `Path ${expandedPath} does not exist`,
       });
       return;
     }
@@ -50,20 +50,20 @@ export function CleanAction({
   };
 
   return (
-    <List.Section title="执行清理">
+    <List.Section title="Execute Cleanup">
       <List.Item
         id="action-clean"
-        title={dryRun ? "预览清理" : "执行清理"}
+        title={dryRun ? "Preview Cleanup" : "Execute Cleanup"}
         subtitle={
           dryRun
-            ? "查看将要删除的内容（不会实际删除）"
-            : "⚠️ 将实际删除文件，请谨慎操作"
+            ? "View what will be deleted (no actual deletion)"
+            : "⚠️ Will actually delete files, use with caution"
         }
         icon={dryRun ? Icon.Eye : Icon.Trash}
         actions={
           <ActionPanel>
             <Action
-              title={dryRun ? "预览清理" : "执行清理"}
+              title={dryRun ? "Preview Cleanup" : "Execute Cleanup"}
               onAction={handleClean}
               icon={dryRun ? Icon.Eye : Icon.Trash}
             />
