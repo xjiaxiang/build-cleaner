@@ -94,7 +94,8 @@ impl CommandExecutor {
         if args.dry_run {
             // 在 dry-run 模式下，文件大小和目录大小都已经在搜索阶段计算完成了
             // 直接使用 SearchResult 中的 total_size，避免重复计算
-            let delete_result = DeleteEngine::execute_deletion_from_search(&search_result, true);
+            let delete_plan = DeleteEngine::create_delete_plan(&search_result);
+            let delete_result = DeleteEngine::execute_deletion(&delete_plan, true);
             let stats = ReportGenerator::collect_stats(&search_result, &delete_result, start_time);
             let report = ReportGenerator::format_report(&stats, &delete_result, args.verbose);
             println!("{}", report);
@@ -104,20 +105,36 @@ impl CommandExecutor {
             return Ok(());
         }
 
-        if args.interactive && !crate::interactive::confirm_deletion(&search_result)? {
-            if !args.quiet {
-                println!("Operation cancelled.");
-            }
-            return Ok(());
-        }
-
-        // 显示清理开始信息
-        if args.verbose && !args.quiet {
-            println!("🧹 Cleaning...");
-        }
-
         let delete_plan = DeleteEngine::create_delete_plan(&search_result);
-        let delete_result = DeleteEngine::execute_deletion(&delete_plan, false);
+
+        // 交互模式下，直接逐个确认删除（不再显示批量确认，避免重复）
+        let delete_result = if args.interactive {
+            if !args.quiet {
+                let total_items = delete_plan.files.len() + delete_plan.dirs.len();
+                println!(
+                    "\n📋 Found {} directories and {} files to delete ({} items total).",
+                    delete_plan.dirs.len(),
+                    delete_plan.files.len(),
+                    total_items
+                );
+                println!(
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                );
+                println!(
+                    "⚠️  You will be prompted for each item. Options: y=yes, N=skip, a=all, q=quit"
+                );
+                println!(
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                );
+            }
+            Self::execute_deletion_interactive(&delete_plan, args.quiet)?
+        } else {
+            // 非交互模式下，显示清理开始信息
+            if args.verbose && !args.quiet {
+                println!("🧹 Cleaning...");
+            }
+            DeleteEngine::execute_deletion(&delete_plan, false)
+        };
 
         let stats = ReportGenerator::collect_stats(&search_result, &delete_result, start_time);
 
@@ -138,5 +155,170 @@ impl CommandExecutor {
         }
 
         Ok(())
+    }
+
+    /// 交互式执行删除操作，逐个确认每个文件/目录
+    fn execute_deletion_interactive(
+        plan: &build_cleaner_core::delete::DeletePlan,
+        quiet: bool,
+    ) -> Result<build_cleaner_core::delete::DeleteResult, CleanError> {
+        use build_cleaner_core::delete::{DeleteEngine, DeleteResult};
+        use std::fs;
+        use trash;
+
+        let mut deleted_files = Vec::new();
+        let mut deleted_dirs = Vec::new();
+        let mut failed_files = Vec::new();
+        let mut failed_dirs = Vec::new();
+        let mut total_size = 0u64;
+        let mut confirm_all = false;
+
+        // 删除文件
+        for file in &plan.files {
+            match DeleteEngine::check_safety(file) {
+                Ok(_) => {
+                    let file_size = fs::metadata(file).map(|m| m.len()).unwrap_or(0);
+
+                    if !confirm_all {
+                        match crate::interactive::confirm_item_deletion(file, false, file_size) {
+                            Ok(true) => {
+                                // 用户确认删除
+                            }
+                            Ok(false) => {
+                                if !quiet {
+                                    println!("  ⏭️  Skipped: {}", file.display());
+                                }
+                                continue;
+                            }
+                            Err(ref e) if e == "all" => {
+                                confirm_all = true;
+                                if !quiet {
+                                    println!("  ✅ All remaining items will be deleted");
+                                }
+                            }
+                            Err(ref e) if e == "quit" => {
+                                if !quiet {
+                                    println!("  ❌ Operation cancelled by user");
+                                }
+                                return Err(CleanError::Other("User cancelled".to_string()));
+                            }
+                            Err(e) => {
+                                if !quiet {
+                                    println!("  ❌ Error: {}", e);
+                                }
+                                return Err(CleanError::Other(e));
+                            }
+                        }
+                    }
+
+                    match trash::delete(file) {
+                        Ok(_) => {
+                            total_size += file_size;
+                            deleted_files.push(file.clone());
+                            if !quiet {
+                                println!("  ✅ Deleted: {}", file.display());
+                            }
+                        }
+                        Err(e) => {
+                            failed_files.push((file.clone(), e.to_string()));
+                            if !quiet {
+                                println!("  ❌ Failed: {} - {}", file.display(), e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    failed_files.push((file.clone(), e.to_string()));
+                    if !quiet {
+                        println!("  ⚠️  Safety check failed: {} - {}", file.display(), e);
+                    }
+                }
+            }
+        }
+
+        // 删除目录（需要计算目录大小）
+        for dir in &plan.dirs {
+            match DeleteEngine::check_safety(dir) {
+                Ok(_) => {
+                    // 计算目录大小
+                    let dir_size = {
+                        use walkdir::WalkDir;
+                        let mut size = 0u64;
+                        for entry in WalkDir::new(dir).into_iter() {
+                            if let Ok(entry) = entry {
+                                if entry.file_type().is_file() {
+                                    if let Ok(metadata) = entry.metadata() {
+                                        size += metadata.len();
+                                    }
+                                }
+                            }
+                        }
+                        size
+                    };
+
+                    if !confirm_all {
+                        match crate::interactive::confirm_item_deletion(dir, true, dir_size) {
+                            Ok(true) => {
+                                // 用户确认删除
+                            }
+                            Ok(false) => {
+                                if !quiet {
+                                    println!("  ⏭️  Skipped: {}", dir.display());
+                                }
+                                continue;
+                            }
+                            Err(ref e) if e == "all" => {
+                                confirm_all = true;
+                                if !quiet {
+                                    println!("  ✅ All remaining items will be deleted");
+                                }
+                            }
+                            Err(ref e) if e == "quit" => {
+                                if !quiet {
+                                    println!("  ❌ Operation cancelled by user");
+                                }
+                                return Err(CleanError::Other("User cancelled".to_string()));
+                            }
+                            Err(e) => {
+                                if !quiet {
+                                    println!("  ❌ Error: {}", e);
+                                }
+                                return Err(CleanError::Other(e));
+                            }
+                        }
+                    }
+
+                    match trash::delete(dir) {
+                        Ok(_) => {
+                            total_size += dir_size;
+                            deleted_dirs.push(dir.clone());
+                            if !quiet {
+                                println!("  ✅ Deleted: {}", dir.display());
+                            }
+                        }
+                        Err(e) => {
+                            failed_dirs.push((dir.clone(), e.to_string()));
+                            if !quiet {
+                                println!("  ❌ Failed: {} - {}", dir.display(), e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    failed_dirs.push((dir.clone(), e.to_string()));
+                    if !quiet {
+                        println!("  ⚠️  Safety check failed: {} - {}", dir.display(), e);
+                    }
+                }
+            }
+        }
+
+        Ok(DeleteResult {
+            deleted_files,
+            deleted_dirs,
+            failed_files,
+            failed_dirs,
+            total_size,
+        })
     }
 }

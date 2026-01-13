@@ -2,6 +2,7 @@ use crate::error::CleanError;
 use crate::search::SearchResult;
 use std::fs;
 use std::path::{Path, PathBuf};
+use trash;
 
 /// 进度回调函数类型
 type ProgressCallback = Box<dyn FnMut(usize, usize, &Path)>;
@@ -103,9 +104,8 @@ impl DeleteEngine {
             .canonicalize()
             .map_err(|_| CleanError::PathNotFound(path.to_path_buf()))?;
 
-        let system_dirs = [
-            "/", "/usr", "/etc", "/bin", "/sbin", "/var", "/sys", "/proc",
-        ];
+        // 先检查具体的系统目录（按长度从长到短排序，避免误匹配）
+        let system_dirs = ["/usr", "/etc", "/bin", "/sbin", "/var", "/sys", "/proc"];
         for sys_dir in &system_dirs {
             if canonical.starts_with(sys_dir) {
                 return Err(CleanError::Other(format!(
@@ -113,6 +113,14 @@ impl DeleteEngine {
                     canonical.display()
                 )));
             }
+        }
+
+        // 最后检查根目录，只允许路径正好是 "/"
+        if canonical == Path::new("/") {
+            return Err(CleanError::Other(format!(
+                "Cannot delete system directory: {}",
+                canonical.display()
+            )));
         }
 
         // 检查规范化后的路径是否包含 ".."（规范化后的路径不应该包含，但检查以防万一）
@@ -227,7 +235,8 @@ impl DeleteEngine {
                     // 在删除前获取文件大小
                     let file_size = fs::metadata(file).map(|m| m.len()).unwrap_or(0);
 
-                    match fs::remove_file(file) {
+                    // 将文件移到回收站而不是直接删除
+                    match trash::delete(file) {
                         Ok(_) => {
                             total_size += file_size;
                             deleted_files.push(file.clone());
@@ -249,8 +258,8 @@ impl DeleteEngine {
                     // 在删除前计算目录大小
                     let dir_size = Self::calculate_dir_size(dir);
 
-                    // 使用 remove_dir_all 删除目录及其所有内容
-                    match fs::remove_dir_all(dir) {
+                    // 将目录移到回收站而不是直接删除
+                    match trash::delete(dir) {
                         Ok(_) => {
                             total_size += dir_size;
                             deleted_dirs.push(dir.clone());

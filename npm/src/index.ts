@@ -99,10 +99,42 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 	const deletePlan = DeleteEngine.createDeletePlan(searchResult);
 
 	// 执行删除
-	const deleteResult = DeleteEngine.executeDeletion(
-		deletePlan,
-		options.dryRun || false
-	);
+	let deleteResult: DeleteResult;
+	if (options.interactive && !options.dryRun) {
+		// 交互模式下，逐个确认删除
+		if (!options.quiet) {
+			const totalItems = deletePlan.files.length + deletePlan.dirs.length;
+			console.log(
+				`\n📋 Found ${deletePlan.dirs.length} directories and ${deletePlan.files.length} files to delete (${totalItems} items total).`
+			);
+			console.log(
+				"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+			);
+			console.log(
+				"⚠️  You will be prompted for each item. Options: y=yes, N=skip, a=all, q=quit"
+			);
+			console.log(
+				"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+			);
+		}
+		try {
+			deleteResult = await DeleteEngine.executeDeletionInteractive(
+				deletePlan,
+				options.quiet || false
+			);
+		} catch (error) {
+			if (error instanceof Error && error.message === "User cancelled") {
+				throw new Error("Operation cancelled by user");
+			}
+			throw error;
+		}
+	} else {
+		// 非交互模式或 dry-run 模式
+		deleteResult = await DeleteEngine.executeDeletion(
+			deletePlan,
+			options.dryRun || false
+		);
+	}
 
 	// 计算耗时
 	const timeTaken = (Date.now() - startTime) / 1000;

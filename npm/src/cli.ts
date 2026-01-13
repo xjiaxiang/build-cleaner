@@ -218,30 +218,6 @@ function formatReport(result: CleanResult, verbose: boolean): string {
 }
 
 /**
- * 交互式确认
- */
-async function confirmDeletion(result: CleanResult): Promise<boolean> {
-	const readline = require("readline");
-	const rl = readline.createInterface({
-		input: process.stdin,
-		output: process.stdout,
-	});
-
-	return new Promise<boolean>((resolve) => {
-		const filesMatched = result.filesDeleted + result.filesFailed;
-		const dirsMatched = result.dirsDeleted + result.dirsFailed;
-
-		rl.question(
-			`Found ${dirsMatched} directories and ${filesMatched} files to delete.\nDo you want to proceed? (y/N): `,
-			(answer: string) => {
-				rl.close();
-				resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
-			}
-		);
-	});
-}
-
-/**
  * 主函数
  */
 async function main() {
